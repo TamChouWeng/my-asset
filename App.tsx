@@ -23,7 +23,11 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  ListFilter
+  ListFilter,
+  Menu,
+  X,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 
 function App() {
@@ -34,6 +38,10 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('All');
   
+  // Sidebar State
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isDesktopOpen, setIsDesktopOpen] = useState(true);
+
   // Sorting and Batch Selection State
   const [sortConfig, setSortConfig] = useState<{ key: keyof AssetRecord; direction: 'asc' | 'desc' } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -205,495 +213,564 @@ function App() {
     visible: { opacity: 1, y: 0 }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 text-slate-100">
-      {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-slate-900 flex-shrink-0 md:h-screen md:sticky md:top-0 border-r border-slate-800 z-10">
-        <div className="p-6">
-          <motion.h1 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent"
-          >
-            My Asset
-          </motion.h1>
-          <motion.p 
-             initial={{ opacity: 0 }}
-             animate={{ opacity: 1 }}
-             transition={{ delay: 0.2 }}
-             className="text-xs text-slate-400 mt-1"
-          >
-            Portfolio Tracker
-          </motion.p>
-        </div>
-        
-        <nav className="px-4 space-y-2">
-          <button 
-            onClick={() => setView('dashboard')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${view === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50 scale-105' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-100'}`}
-          >
-            <LayoutDashboard size={20} />
-            Dashboard
-          </button>
-          <button 
-            onClick={() => setView('property')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${view === 'property' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50 scale-105' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-100'}`}
-          >
-            <Building2 size={20} />
-            Property
-          </button>
-          <button 
-            onClick={() => setView('list')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${view === 'list' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50 scale-105' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-100'}`}
-          >
-            <Table2 size={20} />
-            Records List
-          </button>
-        </nav>
+  // Close mobile sidebar when view changes
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [view]);
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="p-4 mt-auto"
-        >
-          <div className="bg-slate-800 rounded-xl p-4 border border-slate-700">
-            <p className="text-xs text-slate-400 mb-1">Total Net Worth</p>
-            <p className="text-lg font-bold text-emerald-400 truncate">
-              {formatCurrency(totalValue)}
-            </p>
+  return (
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 text-slate-100 relative">
+      
+      {/* Mobile Backdrop */}
+      <AnimatePresence>
+        {isMobileOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileOpen(false)}
+            className="md:hidden fixed inset-0 bg-black/50 z-40 backdrop-blur-sm"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar Navigation */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 bg-slate-900 border-r border-slate-800 transition-all duration-300 ease-in-out
+        w-64 h-full
+        ${isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none'}
+        md:translate-x-0 md:sticky md:top-0 md:h-screen
+        ${isDesktopOpen ? 'md:w-64' : 'md:w-0 md:border-none md:overflow-hidden'}
+      `}>
+        {/* Sidebar Content Container (Fixed width to prevent squishing during collapse) */}
+        <div className="w-64 h-full flex flex-col relative">
+          
+          <div className="p-6 flex justify-between items-start">
+            <div>
+              <motion.h1 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent whitespace-nowrap"
+              >
+                My Asset
+              </motion.h1>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="text-xs text-slate-400 mt-1 whitespace-nowrap"
+              >
+                Your best portfolio tracker
+              </motion.p>
+            </div>
+            {/* Close button for Mobile */}
+            <button 
+              onClick={() => setIsMobileOpen(false)}
+              className="md:hidden text-slate-400 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+             {/* Collapse button for Desktop */}
+             <button 
+              onClick={() => setIsDesktopOpen(false)}
+              className="hidden md:block text-slate-400 hover:text-white transition-colors absolute right-4 top-6"
+              title="Collapse Sidebar"
+            >
+              <PanelLeftClose size={20} />
+            </button>
           </div>
-        </motion.div>
+          
+          <nav className="px-4 space-y-2 flex-1">
+            <button 
+              onClick={() => setView('dashboard')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-100'}`}
+            >
+              <LayoutDashboard size={20} />
+              Dashboard
+            </button>
+            <button 
+              onClick={() => setView('property')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'property' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-100'}`}
+            >
+              <Building2 size={20} />
+              Property
+            </button>
+            <button 
+              onClick={() => setView('list')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'list' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-100'}`}
+            >
+              <Table2 size={20} />
+              Records List
+            </button>
+          </nav>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="p-4 mt-auto"
+          >
+            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 whitespace-nowrap">
+              <p className="text-xs text-slate-400 mb-1">Total Net Worth</p>
+              <p className="text-lg font-bold text-emerald-400 truncate">
+                {formatCurrency(totalValue)}
+              </p>
+            </div>
+          </motion.div>
+        </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-x-hidden">
+      <main className="flex-1 overflow-x-hidden flex flex-col h-screen">
+        
         {/* Top Header Mobile */}
-        <header className="md:hidden bg-slate-900 p-4 border-b border-slate-800 flex justify-between items-center sticky top-0 z-20">
-          <h1 className="font-bold text-slate-100">My Asset</h1>
-          <button onClick={() => setIsFormOpen(true)} className="p-2 bg-blue-600 text-white rounded-full">
+        <header className="md:hidden bg-slate-900 p-4 border-b border-slate-800 flex justify-between items-center sticky top-0 z-20 flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsMobileOpen(true)}
+              className="text-slate-400 hover:text-white"
+            >
+              <Menu size={24} />
+            </button>
+            <h1 className="font-bold text-slate-100">My Asset</h1>
+          </div>
+          <button onClick={() => setIsFormOpen(true)} className="p-2 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/20">
             <Plus size={20} />
           </button>
         </header>
 
-        <motion.div 
-          key={view}
-          initial="hidden"
-          animate="visible"
-          variants={containerVariants}
-          className="p-4 md:p-8 max-w-7xl mx-auto space-y-6"
-        >
-          
-          {/* Action Bar */}
-          <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-100">
-                {view === 'dashboard' ? 'Overview' : view === 'property' ? 'Property Analysis' : 'All Transactions'}
-              </h2>
-              <p className="text-slate-400 text-sm">Manage your wealth effectively</p>
-            </div>
-            <div className="flex gap-3 w-full md:w-auto">
-              <button 
-                onClick={() => downloadCSV(records)}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 border border-slate-700 text-slate-300 rounded-lg hover:bg-slate-800 transition-all hover:scale-105 active:scale-95"
-              >
-                <Download size={18} />
-                <span className="hidden md:inline">Export CSV</span>
-                <span className="md:hidden">CSV</span>
-              </button>
-              <button 
-                onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-900/30 transition-all hover:scale-105 active:scale-95"
-              >
-                <Plus size={18} />
-                Add Record
-              </button>
-            </div>
-          </motion.div>
+        {/* Desktop Expand Sidebar Button - Visible only when sidebar is closed */}
+        {!isDesktopOpen && (
+          <div className="hidden md:block absolute top-6 left-6 z-30">
+            <button 
+              onClick={() => setIsDesktopOpen(true)}
+              className="p-2 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white rounded-lg shadow-lg hover:scale-105 transition-all"
+              title="Expand Sidebar"
+            >
+              <PanelLeftOpen size={20} />
+            </button>
+          </div>
+        )}
 
-          {view === 'dashboard' && (
-            <motion.div variants={itemVariants} className="space-y-6">
-              {/* Stats Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800 flex items-center gap-4 transition-all">
-                  <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-full">
-                    <Wallet size={24} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-400">Total Assets (Active)</p>
-                    <p className="text-2xl font-bold text-slate-100">{formatCurrency(totalValue)}</p>
-                  </div>
-                </motion.div>
-                <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800 flex items-center gap-4 transition-all">
-                  <div className="p-3 bg-blue-500/10 text-blue-400 rounded-full">
-                    <TrendingUp size={24} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-400">Top Asset Class</p>
-                    <p className="text-2xl font-bold text-slate-100">{topAssetClass.type}</p>
-                    <p className="text-xs text-slate-500">{formatCurrency(topAssetClass.value)}</p>
-                  </div>
-                </motion.div>
-                <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800 flex items-center gap-4 transition-all">
-                  <div className="p-3 bg-violet-500/10 text-violet-400 rounded-full">
-                    <Table2 size={24} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-slate-400">Total Records</p>
-                    <p className="text-2xl font-bold text-slate-100">{records.length}</p>
-                  </div>
-                </motion.div>
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto">
+          <motion.div 
+            key={view}
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
+            className="p-4 md:p-8 max-w-7xl mx-auto space-y-6"
+          >
+            
+            {/* Action Bar */}
+            <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className={`${!isDesktopOpen ? 'md:ml-12' : ''} transition-all duration-300`}>
+                <h2 className="text-2xl font-bold text-slate-100">
+                  {view === 'dashboard' ? 'Overview' : view === 'property' ? 'Property Analysis' : 'All Transactions'}
+                </h2>
+                <p className="text-slate-400 text-sm">Manage your wealth effectively</p>
               </div>
-
-              {/* Property Widget Moved to Property Tab */}
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <PieChartComponent data={records} />
-                
-                {/* Recent Activity Mini-Table */}
-                <motion.div 
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="bg-slate-900 rounded-xl shadow-sm border border-slate-800 p-4 h-[500px] overflow-hidden flex flex-col"
+              <div className="flex gap-3 w-full md:w-auto">
+                <button 
+                  onClick={() => downloadCSV(records)}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 border border-slate-700 text-slate-300 rounded-lg hover:bg-slate-800 transition-all hover:scale-105 active:scale-95"
                 >
-                  <h3 className="text-lg font-semibold text-slate-100 mb-4">Recent Activity</h3>
-                  <div className="overflow-y-auto flex-1 pr-2">
-                    <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-slate-400 uppercase bg-slate-800 sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2">Date</th>
-                          <th className="px-3 py-2">Name</th>
-                          <th className="px-3 py-2 text-right">Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800">
-                        {records.slice().sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8).map(record => (
-                          <tr key={record.id} className="hover:bg-slate-800/50 transition-colors">
-                            <td className="px-3 py-3 text-slate-400">{record.date}</td>
-                            <td className="px-3 py-3">
-                              <div className="font-medium text-slate-200">{record.name}</div>
-                              <div className="text-xs text-slate-500">{record.action}</div>
-                            </td>
-                            <td className="px-3 py-3 text-right font-medium text-slate-300">
-                              {formatCurrency(record.amount)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </motion.div>
+                  <Download size={18} />
+                  <span className="hidden md:inline">Export CSV</span>
+                  <span className="md:hidden">CSV</span>
+                </button>
+                <button 
+                  onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-900/30 transition-all hover:scale-105 active:scale-95"
+                >
+                  <Plus size={18} />
+                  Add Record
+                </button>
               </div>
             </motion.div>
-          )}
 
-          {view === 'property' && (
-             <motion.div variants={itemVariants} className="space-y-6">
-              {/* Property Cash Flow Analysis Widget */}
-              <motion.div className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="p-2 bg-red-500/10 text-red-400 rounded-lg">
-                    <Building2 size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-slate-100">Property Cash Flow</h3>
-                    <p className="text-xs text-slate-400">Installments vs. Rental Income</p>
-                  </div>
+            {view === 'dashboard' && (
+              <motion.div variants={itemVariants} className="space-y-6">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800 flex items-center gap-4 transition-all">
+                    <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-full">
+                      <Wallet size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-400">Total Assets (Active)</p>
+                      <p className="text-2xl font-bold text-slate-100">{formatCurrency(totalValue)}</p>
+                    </div>
+                  </motion.div>
+                  <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800 flex items-center gap-4 transition-all">
+                    <div className="p-3 bg-blue-500/10 text-blue-400 rounded-full">
+                      <TrendingUp size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-400">Top Asset Class</p>
+                      <p className="text-2xl font-bold text-slate-100">{topAssetClass.type}</p>
+                      <p className="text-xs text-slate-500">{formatCurrency(topAssetClass.value)}</p>
+                    </div>
+                  </motion.div>
+                  <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800 flex items-center gap-4 transition-all">
+                    <div className="p-3 bg-violet-500/10 text-violet-400 rounded-full">
+                      <Table2 size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-400">Total Records</p>
+                      <p className="text-2xl font-bold text-slate-100">{records.length}</p>
+                    </div>
+                  </motion.div>
                 </div>
 
-                {!propertyMetrics.hasProperties ? (
-                   <div className="text-center py-10 text-slate-500">
-                     No property records found. Add asset type "Property" to see analysis.
-                   </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                      <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
-                        <div className="flex items-center gap-2 mb-2 text-slate-400">
-                          <ArrowDownRight size={16} className="text-red-500" />
-                          <span className="text-sm">Total Invested (Outflow)</span>
-                        </div>
-                        <p className="text-xl font-bold text-slate-100">{formatCurrency(propertyMetrics.totalInvested)}</p>
-                      </div>
-                      <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
-                        <div className="flex items-center gap-2 mb-2 text-slate-400">
-                          <ArrowUpRight size={16} className="text-emerald-500" />
-                          <span className="text-sm">Total Returned (Rent)</span>
-                        </div>
-                        <p className="text-xl font-bold text-slate-100">{formatCurrency(propertyMetrics.totalReturned)}</p>
-                      </div>
-                      <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
-                        <div className="flex items-center gap-2 mb-2 text-slate-400">
-                          <Wallet size={16} className={propertyMetrics.netCashFlow >= 0 ? "text-emerald-500" : "text-red-500"} />
-                          <span className="text-sm">Net Cash Flow</span>
-                        </div>
-                        <p className={`text-xl font-bold ${propertyMetrics.netCashFlow >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                          {propertyMetrics.netCashFlow >= 0 ? '+' : ''}{formatCurrency(propertyMetrics.netCashFlow)}
-                        </p>
-                      </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <PieChartComponent data={records} />
+                  
+                  {/* Recent Activity Mini-Table */}
+                  <motion.div 
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="bg-slate-900 rounded-xl shadow-sm border border-slate-800 p-4 h-[500px] overflow-hidden flex flex-col"
+                  >
+                    <h3 className="text-lg font-semibold text-slate-100 mb-4">Recent Activity</h3>
+                    <div className="overflow-y-auto flex-1 pr-2">
+                      <table className="w-full text-sm text-left">
+                        <thead className="text-xs text-slate-400 uppercase bg-slate-800 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2">Date</th>
+                            <th className="px-3 py-2">Name</th>
+                            <th className="px-3 py-2 text-right">Amount</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-800">
+                          {records.slice().sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8).map(record => (
+                            <tr key={record.id} className="hover:bg-slate-800/50 transition-colors">
+                              <td className="px-3 py-3 text-slate-400">{record.date}</td>
+                              <td className="px-3 py-3">
+                                <div className="font-medium text-slate-200">{record.name}</div>
+                                <div className="text-xs text-slate-500">{record.action}</div>
+                              </td>
+                              <td className="px-3 py-3 text-right font-medium text-slate-300">
+                                {formatCurrency(record.amount)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    
-                    {/* Visual Bar */}
-                    <div className="relative h-4 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="absolute top-0 bottom-0 left-0 bg-red-500 transition-all duration-500" style={{ width: propertyMetrics.totalInvested > 0 ? '100%' : '0%' }}></div>
-                      <div className="absolute top-0 bottom-0 left-0 bg-emerald-500 transition-all duration-500" 
-                          style={{ width: propertyMetrics.totalInvested > 0 ? `${(propertyMetrics.totalReturned / propertyMetrics.totalInvested) * 100}%` : '0%' }}>
-                      </div>
-                    </div>
-                    <div className="flex justify-between text-xs text-slate-500 mt-2">
-                      <span>Investment Phase</span>
-                      <span>{((propertyMetrics.totalReturned / (propertyMetrics.totalInvested || 1)) * 100).toFixed(1)}% Recovered</span>
-                      <span>Profit Phase</span>
-                    </div>
-
-                    {/* Property Transactions List */}
-                    <div className="mt-8">
-                       <h4 className="text-md font-medium text-slate-200 mb-4">Property Transactions</h4>
-                       <div className="bg-slate-950 rounded-lg border border-slate-800 overflow-hidden">
-                          <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
-                              <tr>
-                                <th className="px-4 py-3">Date</th>
-                                <th className="px-4 py-3">Name</th>
-                                <th className="px-4 py-3">Action</th>
-                                <th className="px-4 py-3 text-right">Amount</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800">
-                              {propertyMetrics.records.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(r => (
-                                <tr key={r.id} className="hover:bg-slate-900/50">
-                                  <td className="px-4 py-3 text-slate-400">{r.date}</td>
-                                  <td className="px-4 py-3 text-slate-200">{r.name}</td>
-                                  <td className="px-4 py-3 text-slate-400">{r.action}</td>
-                                  <td className="px-4 py-3 text-right text-slate-200">{formatCurrency(r.amount)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                       </div>
-                    </div>
-                  </>
-                )}
+                  </motion.div>
+                </div>
               </motion.div>
-             </motion.div>
-          )}
+            )}
 
-          {view === 'list' && (
-            <motion.div variants={itemVariants} className="bg-slate-900 rounded-xl shadow-sm border border-slate-800 flex flex-col">
-              {/* Filters */}
-              <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row gap-4 justify-between">
-                <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <input 
-                      type="text" 
-                      placeholder="Search by name or remarks..." 
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-600 transition-shadow"
-                    />
+            {view === 'property' && (
+              <motion.div variants={itemVariants} className="space-y-6">
+                {/* Property Cash Flow Analysis Widget */}
+                <motion.div className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-red-500/10 text-red-400 rounded-lg">
+                      <Building2 size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-100">Property Cash Flow</h3>
+                      <p className="text-xs text-slate-400">Installments vs. Rental Income</p>
+                    </div>
                   </div>
-                  <div className="relative w-full sm:w-48">
-                    <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <select 
-                      value={filterType}
-                      onChange={(e) => setFilterType(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow"
-                    >
-                      <option value="All">All Types</option>
-                      {Object.values(AssetType).map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
+
+                  {!propertyMetrics.hasProperties ? (
+                    <div className="text-center py-10 text-slate-500">
+                      No property records found. Add asset type "Property" to see analysis.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                        <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                          <div className="flex items-center gap-2 mb-2 text-slate-400">
+                            <ArrowDownRight size={16} className="text-red-500" />
+                            <span className="text-sm">Total Invested (Outflow)</span>
+                          </div>
+                          <p className="text-xl font-bold text-slate-100">{formatCurrency(propertyMetrics.totalInvested)}</p>
+                        </div>
+                        <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                          <div className="flex items-center gap-2 mb-2 text-slate-400">
+                            <ArrowUpRight size={16} className="text-emerald-500" />
+                            <span className="text-sm">Total Returned (Rent)</span>
+                          </div>
+                          <p className="text-xl font-bold text-slate-100">{formatCurrency(propertyMetrics.totalReturned)}</p>
+                        </div>
+                        <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                          <div className="flex items-center gap-2 mb-2 text-slate-400">
+                            <Wallet size={16} className={propertyMetrics.netCashFlow >= 0 ? "text-emerald-500" : "text-red-500"} />
+                            <span className="text-sm">Net Cash Flow</span>
+                          </div>
+                          <p className={`text-xl font-bold ${propertyMetrics.netCashFlow >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {propertyMetrics.netCashFlow >= 0 ? '+' : ''}{formatCurrency(propertyMetrics.netCashFlow)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Visual Bar */}
+                      <div className="relative h-4 bg-slate-800 rounded-full overflow-hidden">
+                        <div className="absolute top-0 bottom-0 left-0 bg-red-500 transition-all duration-500" style={{ width: propertyMetrics.totalInvested > 0 ? '100%' : '0%' }}></div>
+                        <div className="absolute top-0 bottom-0 left-0 bg-emerald-500 transition-all duration-500" 
+                            style={{ width: propertyMetrics.totalInvested > 0 ? `${(propertyMetrics.totalReturned / propertyMetrics.totalInvested) * 100}%` : '0%' }}>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-500 mt-2">
+                        <span>Investment Phase</span>
+                        <span>{((propertyMetrics.totalReturned / (propertyMetrics.totalInvested || 1)) * 100).toFixed(1)}% Recovered</span>
+                        <span>Profit Phase</span>
+                      </div>
+
+                      {/* Property Transactions List */}
+                      <div className="mt-8">
+                        <h4 className="text-md font-medium text-slate-200 mb-4">Property Transactions</h4>
+                        <div className="bg-slate-950 rounded-lg border border-slate-800 overflow-hidden">
+                            <table className="w-full text-sm text-left">
+                              <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
+                                <tr>
+                                  <th className="px-4 py-3">Date</th>
+                                  <th className="px-4 py-3">Name</th>
+                                  <th className="px-4 py-3">Action</th>
+                                  <th className="px-4 py-3 text-right">Amount</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800">
+                                {propertyMetrics.records.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(r => (
+                                  <tr key={r.id} className="hover:bg-slate-900/50">
+                                    <td className="px-4 py-3 text-slate-400">{r.date}</td>
+                                    <td className="px-4 py-3 text-slate-200">{r.name}</td>
+                                    <td className="px-4 py-3 text-slate-400">{r.action}</td>
+                                    <td className="px-4 py-3 text-right text-slate-200">{formatCurrency(r.amount)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
+
+            {view === 'list' && (
+              <motion.div variants={itemVariants} className="bg-slate-900 rounded-xl shadow-sm border border-slate-800 flex flex-col">
+                {/* Filters */}
+                <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row gap-4 justify-between">
+                  <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                      <input 
+                        type="text" 
+                        placeholder="Search by name or remarks..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-600 transition-shadow"
+                      />
+                    </div>
+                    <div className="relative w-full sm:w-48">
+                      <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                      <select 
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow"
+                      >
+                        <option value="All">All Types</option>
+                        {Object.values(AssetType).map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    {/* Rows per page dropdown */}
+                    <div className="relative w-full sm:w-32">
+                      <ListFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                      <select 
+                        value={itemsPerPage}
+                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                        className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow"
+                      >
+                        <option value={10}>10 / page</option>
+                        <option value={20}>20 / page</option>
+                        <option value={50}>50 / page</option>
+                        <option value={100}>100 / page</option>
+                      </select>
+                    </div>
                   </div>
-                  {/* Rows per page dropdown */}
-                  <div className="relative w-full sm:w-32">
-                    <ListFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                    <select 
-                      value={itemsPerPage}
-                      onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                      className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow"
-                    >
-                      <option value={10}>10 / page</option>
-                      <option value={20}>20 / page</option>
-                      <option value={50}>50 / page</option>
-                      <option value={100}>100 / page</option>
-                    </select>
-                  </div>
+
+                  {/* Batch Actions */}
+                  <AnimatePresence>
+                    {selectedIds.size > 0 && (
+                      <motion.button
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        onClick={handleBatchDelete}
+                        className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors"
+                      >
+                        <Trash2 size={16} />
+                        <span>Delete Selected ({selectedIds.size})</span>
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                {/* Batch Actions */}
-                <AnimatePresence>
-                  {selectedIds.size > 0 && (
-                    <motion.button
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      onClick={handleBatchDelete}
-                      className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                      <span>Delete Selected ({selectedIds.size})</span>
-                    </motion.button>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-800">
-                    <tr>
-                      <th className="px-4 py-3 w-10">
-                        <div className="flex items-center">
-                          <input 
-                            type="checkbox" 
-                            checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
-                            onChange={toggleSelectAll}
-                            className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
-                          />
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('date')}>
-                        <div className="flex items-center gap-1">
-                          Date 
-                          <ArrowUpDown size={14} className={sortConfig?.key === 'date' ? 'text-blue-400' : 'text-slate-600'} />
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('type')}>
-                        <div className="flex items-center gap-1">
-                          Type
-                          <ArrowUpDown size={14} className={sortConfig?.key === 'type' ? 'text-blue-400' : 'text-slate-600'} />
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('name')}>
-                        <div className="flex items-center gap-1">
-                          Name
-                          <ArrowUpDown size={14} className={sortConfig?.key === 'name' ? 'text-blue-400' : 'text-slate-600'} />
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('action')}>
-                         <div className="flex items-center gap-1">
-                          Action
-                          <ArrowUpDown size={14} className={sortConfig?.key === 'action' ? 'text-blue-400' : 'text-slate-600'} />
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 text-right whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('amount')}>
-                         <div className="flex items-center gap-1 justify-end">
-                          Amount
-                          <ArrowUpDown size={14} className={sortConfig?.key === 'amount' ? 'text-blue-400' : 'text-slate-600'} />
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 text-center whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('status')}>
-                         <div className="flex items-center gap-1 justify-center">
-                          Status
-                          <ArrowUpDown size={14} className={sortConfig?.key === 'status' ? 'text-blue-400' : 'text-slate-600'} />
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 text-center whitespace-nowrap">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    <AnimatePresence>
-                    {paginatedRecords.length > 0 ? (
-                      paginatedRecords.map((record) => (
-                        <motion.tr 
-                          key={record.id} 
-                          layout
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          style={{ display: 'table-row' }}
-                          className={`hover:bg-slate-800/50 group transition-colors ${selectedIds.has(record.id) ? 'bg-blue-900/10' : ''}`}
-                        >
-                          <td className="px-4 py-3 text-center">
+                {/* Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-800">
+                      <tr>
+                        <th className="px-4 py-3 w-10">
+                          <div className="flex items-center">
                             <input 
                               type="checkbox" 
-                              checked={selectedIds.has(record.id)}
-                              onChange={() => toggleSelect(record.id)}
+                              checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
+                              onChange={toggleSelectAll}
                               className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
                             />
-                          </td>
-                          <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{record.date}</td>
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
-                              {record.type}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 font-medium text-slate-200">
-                            {record.name}
-                            {record.remarks && <div className="text-xs text-slate-500 font-normal truncate max-w-[200px]">{record.remarks}</div>}
-                          </td>
-                          <td className="px-4 py-3 text-slate-400">{record.action}</td>
-                          <td className="px-4 py-3 text-right font-semibold text-slate-300">
-                            {formatCurrency(record.amount)}
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              record.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
-                            }`}>
-                              {record.status}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-center">
-                            <div className="flex justify-center gap-2">
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); handleEdit(record); }}
-                                className="p-1.5 text-blue-400 hover:bg-blue-900/30 rounded transition-colors"
-                                title="Edit"
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }}
-                                className="p-1.5 text-red-400 hover:bg-red-900/30 rounded transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </motion.tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
-                          No records found matching your filters.
-                        </td>
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('date')}>
+                          <div className="flex items-center gap-1">
+                            Date 
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'date' ? 'text-blue-400' : 'text-slate-600'} />
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('type')}>
+                          <div className="flex items-center gap-1">
+                            Type
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'type' ? 'text-blue-400' : 'text-slate-600'} />
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('name')}>
+                          <div className="flex items-center gap-1">
+                            Name
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'name' ? 'text-blue-400' : 'text-slate-600'} />
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('action')}>
+                          <div className="flex items-center gap-1">
+                            Action
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'action' ? 'text-blue-400' : 'text-slate-600'} />
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 text-right whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('amount')}>
+                          <div className="flex items-center gap-1 justify-end">
+                            Amount
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'amount' ? 'text-blue-400' : 'text-slate-600'} />
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 text-center whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('status')}>
+                          <div className="flex items-center gap-1 justify-center">
+                            Status
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'status' ? 'text-blue-400' : 'text-slate-600'} />
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 text-center whitespace-nowrap">Actions</th>
                       </tr>
-                    )}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination Footer */}
-              <div className="p-4 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-400">
-                <span>
-                  Showing {paginatedRecords.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, sortedRecords.length)} of {sortedRecords.length} entries
-                </span>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="p-1 hover:bg-slate-800 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <span className="font-medium text-slate-200">
-                    Page {currentPage} of {Math.max(1, totalPages)}
-                  </span>
-                  <button 
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                    className="p-1 hover:bg-slate-800 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronRight size={18} />
-                  </button>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      <AnimatePresence>
+                      {paginatedRecords.length > 0 ? (
+                        paginatedRecords.map((record) => (
+                          <motion.tr 
+                            key={record.id} 
+                            layout
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            style={{ display: 'table-row' }}
+                            className={`hover:bg-slate-800/50 group transition-colors ${selectedIds.has(record.id) ? 'bg-blue-900/10' : ''}`}
+                          >
+                            <td className="px-4 py-3 text-center">
+                              <input 
+                                type="checkbox" 
+                                checked={selectedIds.has(record.id)}
+                                onChange={() => toggleSelect(record.id)}
+                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
+                              />
+                            </td>
+                            <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{record.date}</td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                                {record.type}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 font-medium text-slate-200">
+                              {record.name}
+                              {record.remarks && <div className="text-xs text-slate-500 font-normal truncate max-w-[200px]">{record.remarks}</div>}
+                            </td>
+                            <td className="px-4 py-3 text-slate-400">{record.action}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-slate-300">
+                              {formatCurrency(record.amount)}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                record.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
+                              }`}>
+                                {record.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex justify-center gap-2">
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); handleEdit(record); }}
+                                  className="p-1.5 text-blue-400 hover:bg-blue-900/30 rounded transition-colors"
+                                  title="Edit"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }}
+                                  className="p-1.5 text-red-400 hover:bg-red-900/30 rounded transition-colors"
+                                  title="Delete"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </td>
+                          </motion.tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
+                            No records found matching your filters.
+                          </td>
+                        </tr>
+                      )}
+                      </AnimatePresence>
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            </motion.div>
-          )}
-        </motion.div>
+
+                {/* Pagination Footer */}
+                <div className="p-4 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-400">
+                  <span>
+                    Showing {paginatedRecords.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, sortedRecords.length)} of {sortedRecords.length} entries
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="p-1 hover:bg-slate-800 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <span className="font-medium text-slate-200">
+                      Page {currentPage} of {Math.max(1, totalPages)}
+                    </span>
+                    <button 
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages || totalPages === 0}
+                      className="p-1 hover:bg-slate-800 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        </div>
       </main>
 
       {/* Transaction Form Modal */}
