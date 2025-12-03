@@ -108,7 +108,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data }) => {
       </div>
 
       {aggregatedData.length > 0 ? (
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
