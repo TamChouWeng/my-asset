@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetRecord, AssetType } from './types';
-import { INITIAL_DATA } from './constants';
+import { INITIAL_DATA, TRANSLATIONS, Language } from './constants';
 import PieChartComponent from './components/PieChartComponent';
 import TransactionForm from './components/TransactionForm';
 import { downloadCSV } from './utils/csvHelper';
@@ -27,17 +27,25 @@ import {
   Menu,
   X,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Settings,
+  Moon,
+  Sun,
+  Globe
 } from 'lucide-react';
 
 function App() {
   const [records, setRecords] = useState<AssetRecord[]>(INITIAL_DATA);
-  const [view, setView] = useState<'dashboard' | 'property' | 'list'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'property' | 'list' | 'settings'>('dashboard');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AssetRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('All');
   
+  // Theme and Language State
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [language, setLanguage] = useState<Language>('en');
+
   // Sidebar State
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDesktopOpen, setIsDesktopOpen] = useState(true);
@@ -49,6 +57,19 @@ function App() {
   // Pagination State
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(20);
+
+  // Translation Helper
+  const t = (key: string) => TRANSLATIONS[language][key] || key;
+
+  // Theme Effect
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [theme]);
 
   // Computed Metrics
   const totalValue = useMemo(() => {
@@ -219,7 +240,7 @@ function App() {
   }, [view]);
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-950 text-slate-100 relative">
+    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 relative transition-colors duration-300">
       
       {/* Mobile Backdrop */}
       <AnimatePresence>
@@ -236,7 +257,7 @@ function App() {
 
       {/* Sidebar Navigation */}
       <aside className={`
-        fixed inset-y-0 left-0 z-50 bg-slate-900 border-r border-slate-800 transition-all duration-300 ease-in-out
+        fixed inset-y-0 left-0 z-50 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out
         w-64 h-full
         ${isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full shadow-none'}
         md:translate-x-0 md:sticky md:top-0 md:h-screen
@@ -250,7 +271,7 @@ function App() {
               <motion.h1 
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent whitespace-nowrap"
+                className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-emerald-600 dark:from-blue-400 dark:to-emerald-400 bg-clip-text text-transparent whitespace-nowrap"
               >
                 My Asset
               </motion.h1>
@@ -258,7 +279,7 @@ function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="text-xs text-slate-400 mt-1 whitespace-nowrap"
+                className="text-xs text-slate-500 dark:text-slate-400 mt-1 whitespace-nowrap"
               >
                 Your best portfolio tracker
               </motion.p>
@@ -266,41 +287,51 @@ function App() {
             {/* Close button for Mobile */}
             <button 
               onClick={() => setIsMobileOpen(false)}
-              className="md:hidden text-slate-400 hover:text-white transition-colors"
+              className="md:hidden text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               <X size={20} />
             </button>
              {/* Collapse button for Desktop */}
              <button 
               onClick={() => setIsDesktopOpen(false)}
-              className="hidden md:block text-slate-400 hover:text-white transition-colors absolute right-4 top-6"
+              className="hidden md:block text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors absolute right-4 top-6"
               title="Collapse Sidebar"
             >
               <PanelLeftClose size={20} />
             </button>
           </div>
           
-          <nav className="px-4 space-y-2 flex-1">
+          <nav className="px-4 space-y-2 flex-1 flex flex-col">
             <button 
               onClick={() => setView('dashboard')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-100'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
             >
               <LayoutDashboard size={20} />
-              Dashboard
+              {t('nav_dashboard')}
             </button>
             <button 
               onClick={() => setView('property')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'property' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-100'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'property' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
             >
               <Building2 size={20} />
-              Property
+              {t('nav_property')}
             </button>
             <button 
               onClick={() => setView('list')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'list' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-100'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'list' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
             >
               <Table2 size={20} />
-              Records List
+              {t('nav_records')}
+            </button>
+
+            <div className="flex-1"></div>
+
+            <button 
+              onClick={() => setView('settings')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'settings' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
+            >
+              <Settings size={20} />
+              {t('nav_settings')}
             </button>
           </nav>
 
@@ -308,11 +339,11 @@ function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="p-4 mt-auto"
+            className="p-4 mt-2"
           >
-            <div className="bg-slate-800 rounded-xl p-4 border border-slate-700 whitespace-nowrap">
-              <p className="text-xs text-slate-400 mb-1">Total Net Worth</p>
-              <p className="text-lg font-bold text-emerald-400 truncate">
+            <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 whitespace-nowrap transition-colors">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('stat_net_worth')}</p>
+              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">
                 {formatCurrency(totalValue)}
               </p>
             </div>
@@ -324,15 +355,15 @@ function App() {
       <main className="flex-1 overflow-x-hidden flex flex-col h-screen">
         
         {/* Top Header Mobile */}
-        <header className="md:hidden bg-slate-900 p-4 border-b border-slate-800 flex justify-between items-center sticky top-0 z-20 flex-shrink-0">
+        <header className="md:hidden bg-white dark:bg-slate-900 p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center sticky top-0 z-20 flex-shrink-0 transition-colors">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsMobileOpen(true)}
-              className="text-slate-400 hover:text-white"
+              className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             >
               <Menu size={24} />
             </button>
-            <h1 className="font-bold text-slate-100">My Asset</h1>
+            <h1 className="font-bold text-slate-900 dark:text-slate-100">My Asset</h1>
           </div>
           <button onClick={() => setIsFormOpen(true)} className="p-2 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/20">
             <Plus size={20} />
@@ -344,7 +375,7 @@ function App() {
           <div className="hidden md:block absolute top-6 left-6 z-30">
             <button 
               onClick={() => setIsDesktopOpen(true)}
-              className="p-2 bg-slate-800 border border-slate-700 text-slate-400 hover:text-white rounded-lg shadow-lg hover:scale-105 transition-all"
+              className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg shadow-lg hover:scale-105 transition-all"
               title="Expand Sidebar"
             >
               <PanelLeftOpen size={20} />
@@ -365,93 +396,101 @@ function App() {
             {/* Action Bar */}
             <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className={`${!isDesktopOpen ? 'md:ml-12' : ''} transition-all duration-300`}>
-                <h2 className="text-2xl font-bold text-slate-100">
-                  {view === 'dashboard' ? 'Overview' : view === 'property' ? 'Property Analysis' : 'All Transactions'}
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                  {view === 'dashboard' && t('title_dashboard')}
+                  {view === 'property' && t('title_property')}
+                  {view === 'list' && t('title_records')}
+                  {view === 'settings' && t('title_settings')}
                 </h2>
-                <p className="text-slate-400 text-sm">Manage your wealth effectively</p>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">
+                   {view === 'settings' ? t('subtitle_settings') : t('subtitle_dashboard')}
+                </p>
               </div>
-              <div className="flex gap-3 w-full md:w-auto">
-                <button 
-                  onClick={() => downloadCSV(records)}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-slate-900 border border-slate-700 text-slate-300 rounded-lg hover:bg-slate-800 transition-all hover:scale-105 active:scale-95"
-                >
-                  <Download size={18} />
-                  <span className="hidden md:inline">Export CSV</span>
-                  <span className="md:hidden">CSV</span>
-                </button>
-                <button 
-                  onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-900/30 transition-all hover:scale-105 active:scale-95"
-                >
-                  <Plus size={18} />
-                  Add Record
-                </button>
-              </div>
+              
+              {view !== 'settings' && (
+                <div className="flex gap-3 w-full md:w-auto">
+                  <button 
+                    onClick={() => downloadCSV(records)}
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <Download size={18} />
+                    <span className="hidden md:inline">{t('btn_export')}</span>
+                    <span className="md:hidden">CSV</span>
+                  </button>
+                  <button 
+                    onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-900/30 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <Plus size={18} />
+                    {t('btn_add')}
+                  </button>
+                </div>
+              )}
             </motion.div>
 
             {view === 'dashboard' && (
               <motion.div variants={itemVariants} className="space-y-6">
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800 flex items-center gap-4 transition-all">
-                    <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-full">
+                  <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all">
+                    <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full">
                       <Wallet size={24} />
                     </div>
                     <div>
-                      <p className="text-sm text-slate-400">Total Assets (Active)</p>
-                      <p className="text-2xl font-bold text-slate-100">{formatCurrency(totalValue)}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_total_assets')}</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(totalValue)}</p>
                     </div>
                   </motion.div>
-                  <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800 flex items-center gap-4 transition-all">
-                    <div className="p-3 bg-blue-500/10 text-blue-400 rounded-full">
+                  <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all">
+                    <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full">
                       <TrendingUp size={24} />
                     </div>
                     <div>
-                      <p className="text-sm text-slate-400">Top Asset Class</p>
-                      <p className="text-2xl font-bold text-slate-100">{topAssetClass.type}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_top_asset')}</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{topAssetClass.type}</p>
                       <p className="text-xs text-slate-500">{formatCurrency(topAssetClass.value)}</p>
                     </div>
                   </motion.div>
-                  <motion.div whileHover={{ y: -5 }} className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800 flex items-center gap-4 transition-all">
-                    <div className="p-3 bg-violet-500/10 text-violet-400 rounded-full">
+                  <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all">
+                    <div className="p-3 bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full">
                       <Table2 size={24} />
                     </div>
                     <div>
-                      <p className="text-sm text-slate-400">Total Records</p>
-                      <p className="text-2xl font-bold text-slate-100">{records.length}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_total_records')}</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{records.length}</p>
                     </div>
                   </motion.div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <PieChartComponent data={records} />
+                  <PieChartComponent data={records} theme={theme} t={t} />
                   
                   {/* Recent Activity Mini-Table */}
                   <motion.div 
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.2 }}
-                    className="bg-slate-900 rounded-xl shadow-sm border border-slate-800 p-4 h-[500px] overflow-hidden flex flex-col"
+                    className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 h-[500px] overflow-hidden flex flex-col transition-colors"
                   >
-                    <h3 className="text-lg font-semibold text-slate-100 mb-4">Recent Activity</h3>
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">{t('recent_activity')}</h3>
                     <div className="overflow-y-auto flex-1 pr-2">
                       <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-slate-400 uppercase bg-slate-800 sticky top-0">
+                        <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-slate-800 sticky top-0 transition-colors">
                           <tr>
-                            <th className="px-3 py-2">Date</th>
-                            <th className="px-3 py-2">Name</th>
-                            <th className="px-3 py-2 text-right">Amount</th>
+                            <th className="px-3 py-2">{t('table_date')}</th>
+                            <th className="px-3 py-2">{t('table_name')}</th>
+                            <th className="px-3 py-2 text-right">{t('table_amount')}</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800">
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                           {records.slice().sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8).map(record => (
-                            <tr key={record.id} className="hover:bg-slate-800/50 transition-colors">
-                              <td className="px-3 py-3 text-slate-400">{record.date}</td>
+                            <tr key={record.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                              <td className="px-3 py-3 text-slate-600 dark:text-slate-400">{record.date}</td>
                               <td className="px-3 py-3">
-                                <div className="font-medium text-slate-200">{record.name}</div>
+                                <div className="font-medium text-slate-900 dark:text-slate-200">{record.name}</div>
                                 <div className="text-xs text-slate-500">{record.action}</div>
                               </td>
-                              <td className="px-3 py-3 text-right font-medium text-slate-300">
+                              <td className="px-3 py-3 text-right font-medium text-slate-700 dark:text-slate-300">
                                 {formatCurrency(record.amount)}
                               </td>
                             </tr>
@@ -467,14 +506,14 @@ function App() {
             {view === 'property' && (
               <motion.div variants={itemVariants} className="space-y-6">
                 {/* Property Cash Flow Analysis Widget */}
-                <motion.div className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800">
+                <motion.div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-red-500/10 text-red-400 rounded-lg">
+                    <div className="p-2 bg-red-100 dark:bg-red-500/10 text-red-500 dark:text-red-400 rounded-lg">
                       <Building2 size={20} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-100">Property Cash Flow</h3>
-                      <p className="text-xs text-slate-400">Installments vs. Rental Income</p>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('prop_cash_flow')}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{t('prop_desc')}</p>
                     </div>
                   </div>
 
@@ -485,64 +524,64 @@ function App() {
                   ) : (
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                        <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
-                          <div className="flex items-center gap-2 mb-2 text-slate-400">
+                        <div className="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+                          <div className="flex items-center gap-2 mb-2 text-slate-500 dark:text-slate-400">
                             <ArrowDownRight size={16} className="text-red-500" />
-                            <span className="text-sm">Total Invested (Outflow)</span>
+                            <span className="text-sm">{t('prop_invested')}</span>
                           </div>
-                          <p className="text-xl font-bold text-slate-100">{formatCurrency(propertyMetrics.totalInvested)}</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(propertyMetrics.totalInvested)}</p>
                         </div>
-                        <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
-                          <div className="flex items-center gap-2 mb-2 text-slate-400">
+                        <div className="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+                          <div className="flex items-center gap-2 mb-2 text-slate-500 dark:text-slate-400">
                             <ArrowUpRight size={16} className="text-emerald-500" />
-                            <span className="text-sm">Total Returned (Rent)</span>
+                            <span className="text-sm">{t('prop_returned')}</span>
                           </div>
-                          <p className="text-xl font-bold text-slate-100">{formatCurrency(propertyMetrics.totalReturned)}</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(propertyMetrics.totalReturned)}</p>
                         </div>
-                        <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
-                          <div className="flex items-center gap-2 mb-2 text-slate-400">
+                        <div className="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
+                          <div className="flex items-center gap-2 mb-2 text-slate-500 dark:text-slate-400">
                             <Wallet size={16} className={propertyMetrics.netCashFlow >= 0 ? "text-emerald-500" : "text-red-500"} />
-                            <span className="text-sm">Net Cash Flow</span>
+                            <span className="text-sm">{t('prop_net_flow')}</span>
                           </div>
-                          <p className={`text-xl font-bold ${propertyMetrics.netCashFlow >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                          <p className={`text-xl font-bold ${propertyMetrics.netCashFlow >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
                             {propertyMetrics.netCashFlow >= 0 ? '+' : ''}{formatCurrency(propertyMetrics.netCashFlow)}
                           </p>
                         </div>
                       </div>
                       
                       {/* Visual Bar */}
-                      <div className="relative h-4 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="relative h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div className="absolute top-0 bottom-0 left-0 bg-red-500 transition-all duration-500" style={{ width: propertyMetrics.totalInvested > 0 ? '100%' : '0%' }}></div>
                         <div className="absolute top-0 bottom-0 left-0 bg-emerald-500 transition-all duration-500" 
                             style={{ width: propertyMetrics.totalInvested > 0 ? `${(propertyMetrics.totalReturned / propertyMetrics.totalInvested) * 100}%` : '0%' }}>
                         </div>
                       </div>
                       <div className="flex justify-between text-xs text-slate-500 mt-2">
-                        <span>Investment Phase</span>
-                        <span>{((propertyMetrics.totalReturned / (propertyMetrics.totalInvested || 1)) * 100).toFixed(1)}% Recovered</span>
-                        <span>Profit Phase</span>
+                        <span>{t('prop_investment_phase')}</span>
+                        <span>{((propertyMetrics.totalReturned / (propertyMetrics.totalInvested || 1)) * 100).toFixed(1)}% {t('prop_recovered')}</span>
+                        <span>{t('prop_profit_phase')}</span>
                       </div>
 
                       {/* Property Transactions List */}
                       <div className="mt-8">
-                        <h4 className="text-md font-medium text-slate-200 mb-4">Property Transactions</h4>
-                        <div className="bg-slate-950 rounded-lg border border-slate-800 overflow-hidden">
+                        <h4 className="text-md font-medium text-slate-900 dark:text-slate-200 mb-4">{t('prop_transactions')}</h4>
+                        <div className="bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
                             <table className="w-full text-sm text-left">
-                              <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
+                              <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
                                 <tr>
-                                  <th className="px-4 py-3">Date</th>
-                                  <th className="px-4 py-3">Name</th>
-                                  <th className="px-4 py-3">Action</th>
-                                  <th className="px-4 py-3 text-right">Amount</th>
+                                  <th className="px-4 py-3">{t('table_date')}</th>
+                                  <th className="px-4 py-3">{t('table_name')}</th>
+                                  <th className="px-4 py-3">{t('table_action')}</th>
+                                  <th className="px-4 py-3 text-right">{t('table_amount')}</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-slate-800">
+                              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                                 {propertyMetrics.records.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(r => (
-                                  <tr key={r.id} className="hover:bg-slate-900/50">
-                                    <td className="px-4 py-3 text-slate-400">{r.date}</td>
-                                    <td className="px-4 py-3 text-slate-200">{r.name}</td>
-                                    <td className="px-4 py-3 text-slate-400">{r.action}</td>
-                                    <td className="px-4 py-3 text-right text-slate-200">{formatCurrency(r.amount)}</td>
+                                  <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{r.date}</td>
+                                    <td className="px-4 py-3 text-slate-900 dark:text-slate-200">{r.name}</td>
+                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{r.action}</td>
+                                    <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-200">{formatCurrency(r.amount)}</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -556,18 +595,18 @@ function App() {
             )}
 
             {view === 'list' && (
-              <motion.div variants={itemVariants} className="bg-slate-900 rounded-xl shadow-sm border border-slate-800 flex flex-col">
+              <motion.div variants={itemVariants} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col transition-colors">
                 {/* Filters */}
-                <div className="p-4 border-b border-slate-800 flex flex-col sm:flex-row gap-4 justify-between">
+                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-4 justify-between">
                   <div className="flex flex-col sm:flex-row gap-4 flex-1">
                     <div className="relative flex-1">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                       <input 
                         type="text" 
-                        placeholder="Search by name or remarks..." 
+                        placeholder={t('search_placeholder')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-600 transition-shadow"
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 dark:placeholder-slate-600 transition-colors"
                       />
                     </div>
                     <div className="relative w-full sm:w-48">
@@ -575,9 +614,9 @@ function App() {
                       <select 
                         value={filterType}
                         onChange={(e) => setFilterType(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow"
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-colors"
                       >
-                        <option value="All">All Types</option>
+                        <option value="All">{t('all_types')}</option>
                         {Object.values(AssetType).map(t => <option key={t} value={t}>{t}</option>)}
                       </select>
                     </div>
@@ -587,7 +626,7 @@ function App() {
                       <select 
                         value={itemsPerPage}
                         onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-shadow"
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-colors"
                       >
                         <option value={10}>10 / page</option>
                         <option value={20}>20 / page</option>
@@ -605,10 +644,10 @@ function App() {
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
                         onClick={handleBatchDelete}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/20 transition-colors"
                       >
                         <Trash2 size={16} />
-                        <span>Delete Selected ({selectedIds.size})</span>
+                        <span>{t('btn_delete_selected')} ({selectedIds.size})</span>
                       </motion.button>
                     )}
                   </AnimatePresence>
@@ -617,7 +656,7 @@ function App() {
                 {/* Table */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-slate-400 uppercase bg-slate-800/50 border-b border-slate-800">
+                    <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 transition-colors">
                       <tr>
                         <th className="px-4 py-3 w-10">
                           <div className="flex items-center">
@@ -625,50 +664,50 @@ function App() {
                               type="checkbox" 
                               checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
                               onChange={toggleSelectAll}
-                              className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
+                              className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-slate-900 cursor-pointer"
                             />
                           </div>
                         </th>
-                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('date')}>
+                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('date')}>
                           <div className="flex items-center gap-1">
-                            Date 
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'date' ? 'text-blue-400' : 'text-slate-600'} />
+                            {t('table_date')}
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'date' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
                           </div>
                         </th>
-                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('type')}>
+                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('type')}>
                           <div className="flex items-center gap-1">
-                            Type
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'type' ? 'text-blue-400' : 'text-slate-600'} />
+                            {t('table_type')}
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'type' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
                           </div>
                         </th>
-                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('name')}>
+                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('name')}>
                           <div className="flex items-center gap-1">
-                            Name
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'name' ? 'text-blue-400' : 'text-slate-600'} />
+                            {t('table_name')}
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'name' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
                           </div>
                         </th>
-                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('action')}>
+                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('action')}>
                           <div className="flex items-center gap-1">
-                            Action
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'action' ? 'text-blue-400' : 'text-slate-600'} />
+                            {t('table_action')}
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'action' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
                           </div>
                         </th>
-                        <th className="px-4 py-3 text-right whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('amount')}>
+                        <th className="px-4 py-3 text-right whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('amount')}>
                           <div className="flex items-center gap-1 justify-end">
-                            Amount
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'amount' ? 'text-blue-400' : 'text-slate-600'} />
+                            {t('table_amount')}
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'amount' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
                           </div>
                         </th>
-                        <th className="px-4 py-3 text-center whitespace-nowrap cursor-pointer hover:text-slate-200 transition-colors" onClick={() => handleSort('status')}>
+                        <th className="px-4 py-3 text-center whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('status')}>
                           <div className="flex items-center gap-1 justify-center">
-                            Status
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'status' ? 'text-blue-400' : 'text-slate-600'} />
+                            {t('table_status')}
+                            <ArrowUpDown size={14} className={sortConfig?.key === 'status' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
                           </div>
                         </th>
-                        <th className="px-4 py-3 text-center whitespace-nowrap">Actions</th>
+                        <th className="px-4 py-3 text-center whitespace-nowrap">{t('table_actions')}</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                       <AnimatePresence>
                       {paginatedRecords.length > 0 ? (
                         paginatedRecords.map((record) => (
@@ -679,33 +718,33 @@ function App() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             style={{ display: 'table-row' }}
-                            className={`hover:bg-slate-800/50 group transition-colors ${selectedIds.has(record.id) ? 'bg-blue-900/10' : ''}`}
+                            className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 group transition-colors ${selectedIds.has(record.id) ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}
                           >
                             <td className="px-4 py-3 text-center">
                               <input 
                                 type="checkbox" 
                                 checked={selectedIds.has(record.id)}
                                 onChange={() => toggleSelect(record.id)}
-                                className="w-4 h-4 rounded border-slate-600 bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
+                                className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-slate-900 cursor-pointer"
                               />
                             </td>
-                            <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{record.date}</td>
+                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{record.date}</td>
                             <td className="px-4 py-3">
-                              <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                              <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                                 {record.type}
                               </span>
                             </td>
-                            <td className="px-4 py-3 font-medium text-slate-200">
+                            <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-200">
                               {record.name}
                               {record.remarks && <div className="text-xs text-slate-500 font-normal truncate max-w-[200px]">{record.remarks}</div>}
                             </td>
-                            <td className="px-4 py-3 text-slate-400">{record.action}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-slate-300">
+                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{record.action}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
                               {formatCurrency(record.amount)}
                             </td>
                             <td className="px-4 py-3 text-center">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                record.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
+                                record.status === 'Active' ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
                               }`}>
                                 {record.status}
                               </span>
@@ -714,14 +753,14 @@ function App() {
                               <div className="flex justify-center gap-2">
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); handleEdit(record); }}
-                                  className="p-1.5 text-blue-400 hover:bg-blue-900/30 rounded transition-colors"
+                                  className="p-1.5 text-blue-500 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
                                   title="Edit"
                                 >
                                   <Edit2 size={16} />
                                 </button>
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }}
-                                  className="p-1.5 text-red-400 hover:bg-red-900/30 rounded transition-colors"
+                                  className="p-1.5 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
                                   title="Delete"
                                 >
                                   <Trash2 size={16} />
@@ -733,7 +772,7 @@ function App() {
                       ) : (
                         <tr>
                           <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
-                            No records found matching your filters.
+                            {t('no_records')}
                           </td>
                         </tr>
                       )}
@@ -743,7 +782,7 @@ function App() {
                 </div>
 
                 {/* Pagination Footer */}
-                <div className="p-4 border-t border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-400">
+                <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-500 dark:text-slate-400 transition-colors">
                   <span>
                     Showing {paginatedRecords.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, sortedRecords.length)} of {sortedRecords.length} entries
                   </span>
@@ -751,22 +790,90 @@ function App() {
                     <button 
                       onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                       disabled={currentPage === 1}
-                      className="p-1 hover:bg-slate-800 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronLeft size={18} />
                     </button>
-                    <span className="font-medium text-slate-200">
+                    <span className="font-medium text-slate-900 dark:text-slate-200">
                       Page {currentPage} of {Math.max(1, totalPages)}
                     </span>
                     <button 
                       onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                       disabled={currentPage === totalPages || totalPages === 0}
-                      className="p-1 hover:bg-slate-800 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronRight size={18} />
                     </button>
                   </div>
                 </div>
+              </motion.div>
+            )}
+
+            {view === 'settings' && (
+              <motion.div variants={itemVariants} className="space-y-6">
+                
+                {/* Theme Settings */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 transition-colors">
+                  <div className="flex items-start gap-4 mb-6">
+                     <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full">
+                        {theme === 'dark' ? <Moon size={24} /> : <Sun size={24} />}
+                     </div>
+                     <div>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('setting_theme')}</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">{t('setting_theme_desc')}</p>
+                     </div>
+                  </div>
+                  
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => setTheme('light')}
+                      className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${theme === 'light' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                    >
+                      <Sun size={32} />
+                      <span className="font-medium">{t('theme_light')}</span>
+                    </button>
+                    <button
+                      onClick={() => setTheme('dark')}
+                      className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${theme === 'dark' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                    >
+                      <Moon size={32} />
+                      <span className="font-medium">{t('theme_dark')}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Language Settings */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 transition-colors">
+                  <div className="flex items-start gap-4 mb-6">
+                     <div className="p-3 bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full">
+                        <Globe size={24} />
+                     </div>
+                     <div>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('setting_language')}</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm">{t('setting_language_desc')}</p>
+                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {(['en', 'zh', 'ms'] as const).map((lang) => (
+                      <button
+                        key={lang}
+                        onClick={() => setLanguage(lang)}
+                        className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
+                          language === lang 
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
+                            : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        <span className="font-medium">
+                          {lang === 'en' ? 'English' : lang === 'zh' ? '中文 (Chinese)' : 'Bahasa Melayu'}
+                        </span>
+                        {language === lang && <Check size={20} className="text-blue-600 dark:text-blue-400" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
               </motion.div>
             )}
           </motion.div>

@@ -52,13 +52,13 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-slate-800 relative z-10"
+            className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800 relative z-10 transition-colors duration-300"
           >
-            <div className="flex justify-between items-center p-6 border-b border-slate-800">
-              <h2 className="text-xl font-bold text-slate-100">
+            <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-800">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                 {initialData ? 'Edit Record' : 'New Record'}
               </h2>
-              <button onClick={onClose} className="text-slate-400 hover:text-slate-200 transition-colors">
+              <button onClick={onClose} className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors">
                 <X size={24} />
               </button>
             </div>
@@ -71,21 +71,21 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
             }} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Date</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Date</label>
                   <input
                     type="date"
                     required
                     value={formData.date}
                     onChange={e => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Type</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Type</label>
                   <select
                     value={formData.type}
                     onChange={e => setFormData({ ...formData, type: e.target.value as AssetType })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                   >
                     {Object.values(AssetType).map(t => (
                       <option key={t} value={t}>{t}</option>
@@ -95,26 +95,26 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Name / Identifier</label>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Name / Identifier</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Maybank, EPF, Gold"
                   value={formData.name || ''}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Action</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Action</label>
                   <input
                     type="text"
                     list="actions"
                     value={formData.action || ''}
                     onChange={e => setFormData({ ...formData, action: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                   />
                   <datalist id="actions">
                     <option value="Buy" />
@@ -126,11 +126,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                   </datalist>
                 </div>
                  <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Status</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Status</label>
                   <select
                     value={formData.status}
                     onChange={e => setFormData({ ...formData, status: e.target.value as AssetStatus })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                   >
                     {Object.values(AssetStatus).map(s => (
                       <option key={s} value={s}>{s}</option>
@@ -141,75 +141,75 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
 
               <div className="grid grid-cols-3 gap-4">
                  <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Total Amount</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Total Amount</label>
                   <input
                     type="number"
                     step="0.01"
                     required
                     value={formData.amount}
                     onChange={e => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow font-semibold"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow font-semibold"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Unit Price</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Unit Price</label>
                   <input
                     type="number"
                     step="0.001"
                     value={formData.unitPrice || ''}
                     onChange={e => setFormData({ ...formData, unitPrice: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Quantity</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Quantity</label>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.quantity || ''}
                     onChange={e => setFormData({ ...formData, quantity: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Int/Dividend</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Int/Dividend</label>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.interestDividend || ''}
                     onChange={e => setFormData({ ...formData, interestDividend: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-1">Maturity Date</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Maturity Date</label>
                   <input
                     type="date"
                     value={formData.maturityDate || ''}
                     onChange={e => setFormData({ ...formData, maturityDate: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Remarks</label>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Remarks</label>
                 <textarea
                   rows={3}
                   value={formData.remarks || ''}
                   onChange={e => setFormData({ ...formData, remarks: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors"
+                  className="px-4 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>

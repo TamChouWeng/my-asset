@@ -6,6 +6,8 @@ import { COLORS } from '../constants';
 
 interface PieChartComponentProps {
   data: AssetRecord[];
+  theme: 'light' | 'dark';
+  t: (key: string) => string;
 }
 
 // Color palette for individual assets breakdown
@@ -24,7 +26,7 @@ const DETAIL_COLORS = [
   '#a855f7', // purple-500
 ];
 
-const PieChartComponent: React.FC<PieChartComponentProps> = ({ data }) => {
+const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t }) => {
   const [filterType, setFilterType] = useState<string>('All');
 
   // Aggregate data based on filter
@@ -82,18 +84,18 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data }) => {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
-      className="w-full h-[500px] bg-slate-900 rounded-xl shadow-sm p-4 border border-slate-800 flex flex-col"
+      className="w-full h-[500px] bg-white dark:bg-slate-900 rounded-xl shadow-sm p-4 border border-slate-200 dark:border-slate-800 flex flex-col transition-colors duration-300"
     >
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-semibold text-slate-100">
-          {filterType === 'All' ? 'Asset Allocation' : `${filterType} Breakdown`}
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+          {filterType === 'All' ? t('chart_asset_allocation') : `${filterType} ${t('chart_breakdown')}`}
         </h3>
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="bg-slate-950 border border-slate-700 text-slate-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none cursor-pointer"
+          className="bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none cursor-pointer transition-colors"
         >
-          <option value="All">All Assets</option>
+          <option value="All">{t('all_assets')}</option>
           {Object.values(AssetType).map((type) => (
             <option key={type} value={type}>{type}</option>
           ))}
@@ -125,8 +127,14 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data }) => {
                   const percentage = totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : '0';
                   return `${formattedValue} (${percentage}%)`;
                 }}
-                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f1f5f9', borderRadius: '0.5rem' }}
-                itemStyle={{ color: '#f1f5f9' }}
+                contentStyle={{ 
+                  backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff', 
+                  borderColor: theme === 'dark' ? '#1e293b' : '#e2e8f0', 
+                  color: theme === 'dark' ? '#f1f5f9' : '#0f172a', 
+                  borderRadius: '0.5rem',
+                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                }}
+                itemStyle={{ color: theme === 'dark' ? '#f1f5f9' : '#0f172a' }}
               />
               <Legend 
                 verticalAlign="bottom" 
@@ -141,7 +149,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data }) => {
                 formatter={(value, entry: any) => {
                   const item = aggregatedData.find(d => d.name === value);
                   const percent = (totalValue > 0 && item) ? ((item.value / totalValue) * 100).toFixed(0) : 0;
-                  return <span style={{ color: entry.color, marginRight: '10px' }}>{`${value} (${percent}%)`}</span>;
+                  return <span className="text-slate-700 dark:text-slate-200" style={{ color: entry.color, marginRight: '10px' }}>{`${value} (${percent}%)`}</span>;
                 }}
               />
             </PieChart>
@@ -149,7 +157,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data }) => {
         </div>
       ) : (
         <div className="h-full flex items-center justify-center text-slate-500">
-          No active assets to display for this category
+          {t('chart_no_data')}
         </div>
       )}
     </motion.div>
