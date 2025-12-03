@@ -15,7 +15,10 @@ import {
   TrendingUp, 
   Wallet,
   Search,
-  Filter
+  Filter,
+  Building2,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 
 function App() {
@@ -43,6 +46,34 @@ function App() {
       if (val > top.value) top = { type: key, value: val };
     });
     return top;
+  }, [records]);
+
+  // Property Specific Analysis
+  const propertyMetrics = useMemo(() => {
+    const propertyRecords = records.filter(r => r.type === AssetType.Property);
+    
+    let totalInvested = 0; // Outflow (Buy, Installment, Pay, Renovation)
+    let totalReturned = 0; // Inflow (Rent, Income, Sold)
+    
+    propertyRecords.forEach(r => {
+      const action = r.action.toLowerCase();
+      // Logic to categorize actions
+      const isOutflow = ['buy', 'pay', 'installment', 'downpayment', 'maintenance', 'expense', 'tax', 'renovation'].some(k => action.includes(k));
+      const isInflow = ['rent', 'income', 'sold', 'dividend'].some(k => action.includes(k));
+
+      if (isOutflow) {
+        totalInvested += r.amount;
+      } else if (isInflow) {
+        totalReturned += r.amount;
+      }
+    });
+
+    return {
+      totalInvested,
+      totalReturned,
+      netCashFlow: totalReturned - totalInvested,
+      hasProperties: propertyRecords.length > 0
+    };
   }, [records]);
 
   const filteredRecords = useMemo(() => {
@@ -227,6 +258,60 @@ function App() {
                   </div>
                 </motion.div>
               </div>
+
+              {/* Property Cash Flow Analysis Widget */}
+              {propertyMetrics.hasProperties && (
+                <motion.div variants={itemVariants} className="bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-800">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-red-500/10 text-red-400 rounded-lg">
+                      <Building2 size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-100">Property Cash Flow</h3>
+                      <p className="text-xs text-slate-400">Installments vs. Rental Income</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                    <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                      <div className="flex items-center gap-2 mb-2 text-slate-400">
+                        <ArrowDownRight size={16} className="text-red-500" />
+                        <span className="text-sm">Total Invested (Outflow)</span>
+                      </div>
+                      <p className="text-xl font-bold text-slate-100">{formatCurrency(propertyMetrics.totalInvested)}</p>
+                    </div>
+                    <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                      <div className="flex items-center gap-2 mb-2 text-slate-400">
+                        <ArrowUpRight size={16} className="text-emerald-500" />
+                        <span className="text-sm">Total Returned (Rent)</span>
+                      </div>
+                      <p className="text-xl font-bold text-slate-100">{formatCurrency(propertyMetrics.totalReturned)}</p>
+                    </div>
+                    <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                       <div className="flex items-center gap-2 mb-2 text-slate-400">
+                        <Wallet size={16} className={propertyMetrics.netCashFlow >= 0 ? "text-emerald-500" : "text-red-500"} />
+                        <span className="text-sm">Net Cash Flow</span>
+                      </div>
+                      <p className={`text-xl font-bold ${propertyMetrics.netCashFlow >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {propertyMetrics.netCashFlow >= 0 ? '+' : ''}{formatCurrency(propertyMetrics.netCashFlow)}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Visual Bar */}
+                  <div className="relative h-4 bg-slate-800 rounded-full overflow-hidden">
+                    <div className="absolute top-0 bottom-0 left-0 bg-red-500 transition-all duration-500" style={{ width: propertyMetrics.totalInvested > 0 ? '100%' : '0%' }}></div>
+                    <div className="absolute top-0 bottom-0 left-0 bg-emerald-500 transition-all duration-500" 
+                         style={{ width: propertyMetrics.totalInvested > 0 ? `${(propertyMetrics.totalReturned / propertyMetrics.totalInvested) * 100}%` : '0%' }}>
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-500 mt-2">
+                    <span>Investment Phase</span>
+                    <span>{((propertyMetrics.totalReturned / (propertyMetrics.totalInvested || 1)) * 100).toFixed(1)}% Recovered</span>
+                    <span>Profit Phase</span>
+                  </div>
+                </motion.div>
+              )}
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <PieChartComponent data={records} />
