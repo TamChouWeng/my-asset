@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { motion } from 'framer-motion';
 import { AssetRecord, AssetStatus, ChartDataPoint, AssetType } from '../types';
 import { COLORS } from '../constants';
 
@@ -40,8 +41,6 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data }) => {
         } else {
           // Filter by selected Type, Group by Name
           if (item.type === filterType) {
-            // Use name as key, maybe combine with remarks if needed for uniqueness, 
-            // but name is usually sufficient for high level allocation
             const current = map.get(item.name) || 0;
             map.set(item.name, current + item.amount);
           }
@@ -76,21 +75,15 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data }) => {
     return result.sort((a, b) => b.value - a.value);
   }, [data, filterType]);
 
-  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
-    const RADIAN = Math.PI / 180;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-    return percent > 0.05 ? (
-      <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
-        {`${(percent * 100).toFixed(0)}%`}
-      </text>
-    ) : null;
-  };
+  const totalValue = useMemo(() => aggregatedData.reduce((acc, cur) => acc + cur.value, 0), [aggregatedData]);
 
   return (
-    <div className="w-full h-[400px] bg-slate-900 rounded-xl shadow-sm p-4 border border-slate-800 flex flex-col">
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
+      className="w-full h-[500px] bg-slate-900 rounded-xl shadow-sm p-4 border border-slate-800 flex flex-col"
+    >
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-slate-100">
           {filterType === 'All' ? 'Asset Allocation' : `${filterType} Breakdown`}
@@ -110,31 +103,46 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data }) => {
       {aggregatedData.length > 0 ? (
         <div className="flex-1 min-h-0 min-w-0">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+            <PieChart margin={{ bottom: 20 }}>
               <Pie
                 data={aggregatedData}
                 cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={renderCustomLabel}
-                outerRadius={105}
-                fill="#8884d8"
+                cy="45%"
+                outerRadius="55%"
                 dataKey="value"
+                stroke="none"
+                // Labels removed as per request
+                label={false}
+                labelLine={false}
               >
                 {aggregatedData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip 
-                formatter={(value: number) => new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(value)}
-                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f1f5f9' }}
+                formatter={(value: number) => {
+                  const formattedValue = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(value);
+                  const percentage = totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : '0';
+                  return `${formattedValue} (${percentage}%)`;
+                }}
+                contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f1f5f9', borderRadius: '0.5rem' }}
                 itemStyle={{ color: '#f1f5f9' }}
               />
               <Legend 
                 verticalAlign="bottom" 
-                height={36} 
+                align="center"
                 iconType="circle"
-                wrapperStyle={{ paddingTop: '20px' }}
+                layout="horizontal"
+                wrapperStyle={{ 
+                  paddingTop: '20px', 
+                  fontSize: '12px',
+                  width: '100%' 
+                }}
+                formatter={(value, entry: any) => {
+                  const item = aggregatedData.find(d => d.name === value);
+                  const percent = (totalValue > 0 && item) ? ((item.value / totalValue) * 100).toFixed(0) : 0;
+                  return <span style={{ color: entry.color, marginRight: '10px' }}>{`${value} (${percent}%)`}</span>;
+                }}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -144,7 +152,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data }) => {
           No active assets to display for this category
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
