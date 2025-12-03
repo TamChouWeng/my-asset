@@ -161,6 +161,13 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'setting_language_desc': 'Select your preferred language',
     'theme_light': 'Light',
     'theme_dark': 'Dark',
+
+    // Chatbot
+    'chatbot_title': 'AI Financial Assistant',
+    'chatbot_welcome': 'Hello! I can analyze your portfolio and answer questions about your assets.',
+    'chatbot_input_placeholder': 'Ask a question...',
+    'chatbot_thinking': 'Thinking...',
+    'chatbot_error': 'Sorry, I encountered an error. Please try again.',
   },
   zh: {
     'nav_dashboard': '仪表板',
@@ -219,6 +226,12 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'setting_language_desc': '选择您的首选语言',
     'theme_light': '亮色',
     'theme_dark': '暗色',
+
+    'chatbot_title': 'AI 财务助手',
+    'chatbot_welcome': '你好！我可以分析您的投资组合并回答有关您资产的问题。',
+    'chatbot_input_placeholder': '问一个问题...',
+    'chatbot_thinking': '思考中...',
+    'chatbot_error': '抱歉，我遇到了错误。请重试。',
   },
   ms: {
     'nav_dashboard': 'Papan Pemuka',
@@ -277,5 +290,11 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'setting_language_desc': 'Pilih bahasa pilihan anda',
     'theme_light': 'Cerah',
     'theme_dark': 'Gelap',
+
+    'chatbot_title': 'Pembantu Kewangan AI',
+    'chatbot_welcome': 'Helo! Saya boleh menganalisis portfolio anda dan menjawab soalan mengenai aset anda.',
+    'chatbot_input_placeholder': 'Tanya soalan...',
+    'chatbot_thinking': 'Sedang berfikir...',
+    'chatbot_error': 'Maaf, saya menghadapi ralat. Sila cuba lagi.',
   }
 };

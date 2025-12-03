@@ -3,6 +3,7 @@ import { AssetRecord, AssetType } from './types';
 import { INITIAL_DATA, TRANSLATIONS, Language } from './constants';
 import PieChartComponent from './components/PieChartComponent';
 import TransactionForm from './components/TransactionForm';
+import Chatbot from './components/Chatbot';
 import { downloadCSV } from './utils/csvHelper';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -887,6 +888,10 @@ function App() {
         onSave={handleSave}
         initialData={editingRecord}
       />
+      
+      {/* AI Chatbot */}
+      <Chatbot records={records} t={t} />
+
     </div>
   );
 }
