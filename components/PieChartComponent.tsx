@@ -84,7 +84,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t })
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
-      className="w-full h-[500px] bg-white dark:bg-slate-900 rounded-xl shadow-sm p-4 border border-slate-200 dark:border-slate-800 flex flex-col transition-colors duration-300"
+      className="w-full h-full min-h-[300px] bg-white dark:bg-slate-900 rounded-xl shadow-sm p-4 border border-slate-200 dark:border-slate-800 flex flex-col transition-colors duration-300"
     >
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
@@ -110,7 +110,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t })
                 data={aggregatedData}
                 cx="50%"
                 cy="45%"
-                outerRadius="75%" 
+                outerRadius="80%" 
                 dataKey="value"
                 stroke="none"
                 // Labels removed as per request

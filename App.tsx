@@ -445,7 +445,7 @@ function App() {
             initial="hidden"
             animate="visible"
             variants={containerVariants}
-            className="p-4 md:p-8 max-w-7xl mx-auto space-y-6"
+            className="p-4 md:p-8 w-full max-w-[1920px] mx-auto space-y-6"
           >
             
             {/* Action Bar */}
@@ -485,76 +485,53 @@ function App() {
 
             {view === 'dashboard' && (
               <motion.div variants={itemVariants} className="space-y-6">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all">
-                    <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full">
-                      <Wallet size={24} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_total_assets')}</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(totalValue)}</p>
-                    </div>
-                  </motion.div>
-                  <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all">
-                    <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full">
-                      <TrendingUp size={24} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_top_asset')}</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{topAssetClass.type}</p>
-                      <p className="text-xs text-slate-500">{formatCurrency(topAssetClass.value)}</p>
-                    </div>
-                  </motion.div>
-                  <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all">
-                    <div className="p-3 bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full">
-                      <Table2 size={24} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_total_records')}</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{records.length}</p>
-                    </div>
-                  </motion.div>
+                
+                {/* Dashboard Grid Layout - Height adjusted to fit viewport on desktop */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[calc(100vh-14rem)]">
+                  
+                  {/* Left Column: Pie Chart (2/3 width) */}
+                  <div className="lg:col-span-2 h-full">
+                     <PieChartComponent data={records} theme={theme} t={t} />
+                  </div>
+
+                  {/* Right Column: Stats (1/3 width, stacked) */}
+                  <div className="flex flex-col gap-4 h-full">
+                    {/* Total Assets Card */}
+                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-6 transition-all flex-1">
+                      <div className="p-4 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full shrink-0">
+                        <Wallet size={32} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-base text-slate-500 dark:text-slate-400 truncate mb-1">{t('stat_total_assets')}</p>
+                        <p className="text-3xl xl:text-4xl font-bold text-slate-900 dark:text-slate-100 truncate">{formatCurrency(totalValue)}</p>
+                      </div>
+                    </motion.div>
+
+                    {/* Top Asset Card */}
+                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-6 transition-all flex-1">
+                      <div className="p-4 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full shrink-0">
+                        <TrendingUp size={32} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-base text-slate-500 dark:text-slate-400 truncate mb-1">{t('stat_top_asset')}</p>
+                        <p className="text-3xl xl:text-4xl font-bold text-slate-900 dark:text-slate-100 truncate">{topAssetClass.type}</p>
+                        <p className="text-lg text-slate-500 truncate">{formatCurrency(topAssetClass.value)}</p>
+                      </div>
+                    </motion.div>
+
+                    {/* Total Records Card */}
+                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-6 transition-all flex-1">
+                      <div className="p-4 bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full shrink-0">
+                        <Table2 size={32} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-base text-slate-500 dark:text-slate-400 truncate mb-1">{t('stat_total_records')}</p>
+                        <p className="text-3xl xl:text-4xl font-bold text-slate-900 dark:text-slate-100 truncate">{records.length}</p>
+                      </div>
+                    </motion.div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <PieChartComponent data={records} theme={theme} t={t} />
-                  
-                  {/* Recent Activity Mini-Table */}
-                  <motion.div 
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-4 h-[500px] overflow-hidden flex flex-col transition-colors"
-                  >
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">{t('recent_activity')}</h3>
-                    <div className="overflow-y-auto flex-1 pr-2">
-                      <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-slate-800 sticky top-0 transition-colors">
-                          <tr>
-                            <th className="px-3 py-2">{t('table_date')}</th>
-                            <th className="px-3 py-2">{t('table_name')}</th>
-                            <th className="px-3 py-2 text-right">{t('table_amount')}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                          {records.slice().sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8).map(record => (
-                            <tr key={record.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                              <td className="px-3 py-3 text-slate-600 dark:text-slate-400">{record.date}</td>
-                              <td className="px-3 py-3">
-                                <div className="font-medium text-slate-900 dark:text-slate-200">{record.name}</div>
-                                <div className="text-xs text-slate-500">{record.action}</div>
-                              </td>
-                              <td className="px-3 py-3 text-right font-medium text-slate-700 dark:text-slate-300">
-                                {formatCurrency(record.amount)}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </motion.div>
-                </div>
               </motion.div>
             )}
 
@@ -656,55 +633,60 @@ function App() {
                              </select>
                            </div>
                         </div>
-                        <div className="bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
-                            <table className="w-full text-sm text-left">
-                              <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
-                                <tr>
-                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => handlePropertySort('date')}>
-                                    <div className="flex items-center gap-1">
-                                      {t('table_date')}
-                                      <ArrowUpDown size={12} className={propertySort?.key === 'date' ? 'text-blue-500' : 'text-slate-400'} />
-                                    </div>
-                                  </th>
-                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => handlePropertySort('name')}>
-                                    <div className="flex items-center gap-1">
-                                      {t('table_name')}
-                                      <ArrowUpDown size={12} className={propertySort?.key === 'name' ? 'text-blue-500' : 'text-slate-400'} />
-                                    </div>
-                                  </th>
-                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => handlePropertySort('action')}>
-                                    <div className="flex items-center gap-1">
-                                      {t('table_action')}
-                                      <ArrowUpDown size={12} className={propertySort?.key === 'action' ? 'text-blue-500' : 'text-slate-400'} />
-                                    </div>
-                                  </th>
-                                  <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => handlePropertySort('amount')}>
-                                    <div className="flex items-center gap-1 justify-end">
-                                      {t('table_amount')}
-                                      <ArrowUpDown size={12} className={propertySort?.key === 'amount' ? 'text-blue-500' : 'text-slate-400'} />
-                                    </div>
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                                {paginatedPropertyRecords.length > 0 ? (
-                                  paginatedPropertyRecords.map(r => (
-                                    <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
-                                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{r.date}</td>
-                                      <td className="px-4 py-3 text-slate-900 dark:text-slate-200">{r.name}</td>
-                                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{r.action}</td>
-                                      <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-200">{formatCurrency(r.amount)}</td>
+                        
+                        <div className="bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-col">
+                            {/* Scrollable Wrapper for Mobile Table */}
+                            <div className="overflow-x-auto w-full">
+                                <table className="w-full text-sm text-left min-w-[600px]">
+                                  <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
+                                    <tr>
+                                      <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('date')}>
+                                        <div className="flex items-center gap-1">
+                                          {t('table_date')}
+                                          <ArrowUpDown size={12} className={propertySort?.key === 'date' ? 'text-blue-500' : 'text-slate-400'} />
+                                        </div>
+                                      </th>
+                                      <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('name')}>
+                                        <div className="flex items-center gap-1">
+                                          {t('table_name')}
+                                          <ArrowUpDown size={12} className={propertySort?.key === 'name' ? 'text-blue-500' : 'text-slate-400'} />
+                                        </div>
+                                      </th>
+                                      <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('action')}>
+                                        <div className="flex items-center gap-1">
+                                          {t('table_action')}
+                                          <ArrowUpDown size={12} className={propertySort?.key === 'action' ? 'text-blue-500' : 'text-slate-400'} />
+                                        </div>
+                                      </th>
+                                      <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('amount')}>
+                                        <div className="flex items-center gap-1 justify-end">
+                                          {t('table_amount')}
+                                          <ArrowUpDown size={12} className={propertySort?.key === 'amount' ? 'text-blue-500' : 'text-slate-400'} />
+                                        </div>
+                                      </th>
                                     </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                                      No records found
-                                    </td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                                    {paginatedPropertyRecords.length > 0 ? (
+                                      paginatedPropertyRecords.map(r => (
+                                        <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                                          <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{r.date}</td>
+                                          <td className="px-4 py-3 text-slate-900 dark:text-slate-200 whitespace-nowrap">{r.name}</td>
+                                          <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{r.action}</td>
+                                          <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-200 whitespace-nowrap">{formatCurrency(r.amount)}</td>
+                                        </tr>
+                                      ))
+                                    ) : (
+                                      <tr>
+                                        <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+                                          No records found
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </tbody>
+                                </table>
+                            </div>
+                            
                             {/* Pagination Controls */}
                             {propertyTotalPages > 1 && (
                               <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">

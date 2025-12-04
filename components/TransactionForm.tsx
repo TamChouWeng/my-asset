@@ -84,7 +84,15 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Type</label>
                   <select
                     value={formData.type}
-                    onChange={e => setFormData({ ...formData, type: e.target.value as AssetType })}
+                    onChange={e => {
+                      const newType = e.target.value as AssetType;
+                      // Automatically switch Action default when Type changes to prevent invalid selections
+                      setFormData({ 
+                        ...formData, 
+                        type: newType,
+                        action: newType === AssetType.Property ? 'Pay' : 'Buy'
+                      });
+                    }}
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                   >
                     {Object.values(AssetType).map(t => (
@@ -115,32 +123,21 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                       onChange={e => setFormData({ ...formData, action: e.target.value })}
                       className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
                     >
-                      <option value="">Select Action</option>
                       <option value="Pay">Pay</option>
                       <option value="Rent">Rent</option>
-                      <option value="Buy">Buy</option>
                       <option value="Sold">Sold</option>
                       <option value="Renovation">Renovation</option>
                       <option value="Maintenance">Maintenance</option>
                     </select>
                   ) : (
-                    <>
-                      <input
-                        type="text"
-                        list="actions"
-                        value={formData.action || ''}
-                        onChange={e => setFormData({ ...formData, action: e.target.value })}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                      />
-                      <datalist id="actions">
-                        <option value="Buy" />
-                        <option value="Sell" />
-                        <option value="Dividend" />
-                        <option value="Deposit" />
-                        <option value="Self contribute" />
-                        <option value="Employee contribute" />
-                      </datalist>
-                    </>
+                    <select
+                      value={formData.action || ''}
+                      onChange={e => setFormData({ ...formData, action: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    >
+                      <option value="Buy">Buy</option>
+                      <option value="Sold">Sold</option>
+                    </select>
                   )}
                 </div>
                  <div>
