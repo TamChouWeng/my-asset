@@ -510,10 +510,10 @@ function App() {
               <motion.div variants={itemVariants} className="space-y-6">
                 
                 {/* Dashboard Grid Layout - Height adjusted to fit viewport on desktop */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[calc(100vh-14rem)]">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:h-[calc(100vh-14rem)]">
                   
-                  {/* Left Column: Charts (2/3 width) */}
-                  <div className="lg:col-span-2 h-full flex flex-col gap-4">
+                  {/* Left Column: Charts (1/2 width) */}
+                  <div className="h-full flex flex-col gap-4">
                      {/* Toggle for Charts */}
                      <div className="flex gap-2 p-1 bg-white dark:bg-slate-900 w-fit rounded-lg border border-slate-200 dark:border-slate-800">
                         <button 
@@ -541,7 +541,7 @@ function App() {
                      </div>
                   </div>
 
-                  {/* Right Column: Stats (1/3 width, stacked) */}
+                  {/* Right Column: Stats (1/2 width, stacked) */}
                   <div className="flex flex-col gap-4 h-full">
                     {/* Total Assets Card */}
                     <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-6 transition-all flex-1">
