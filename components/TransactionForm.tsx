@@ -69,7 +69,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
               onSave(formData as Omit<AssetRecord, 'id'>);
               onClose();
             }} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Date</label>
                   <input
@@ -114,7 +114,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Action</label>
                   {formData.type === AssetType.Property ? (
@@ -154,8 +154,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                 <div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                 <div className="col-span-2 sm:col-span-1">
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Total Amount</label>
                   <input
                     type="number"
@@ -188,7 +188,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Int/Dividend</label>
                   <input
