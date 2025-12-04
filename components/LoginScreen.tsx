@@ -17,12 +17,17 @@ export default function LoginScreen() {
 
     try {
       if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
         });
         if (error) throw error;
-        alert('Check your email for the confirmation link!');
+        
+        // If "Confirm email" is disabled in Supabase, a session is created immediately.
+        // We only alert the user if no session exists (meaning verification is required).
+        if (!data.session) {
+           alert('Check your email for the confirmation link!');
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,

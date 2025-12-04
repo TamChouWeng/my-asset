@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetRecord, AssetType } from './types';
-import { INITIAL_DATA, TRANSLATIONS, Language } from './constants';
+import { TRANSLATIONS, Language } from './constants';
 import PieChartComponent from './components/PieChartComponent';
 import TransactionForm from './components/TransactionForm';
 import Chatbot from './components/Chatbot';
@@ -43,7 +43,7 @@ import {
 } from 'lucide-react';
 
 function App() {
-  const { user, loading, signOut } = useAuth();
+  const { user, profile, loading, signOut, updateProfile } = useAuth();
   const [records, setRecords] = useState<AssetRecord[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(false);
 
@@ -53,10 +53,6 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('All');
   
-  // Theme and Language State
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [language, setLanguage] = useState<Language>('en');
-
   // Sidebar State
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDesktopOpen, setIsDesktopOpen] = useState(true);
@@ -76,6 +72,10 @@ function App() {
   const [propertyPage, setPropertyPage] = useState(1);
   const [propertyRowsPerPage, setPropertyRowsPerPage] = useState(5);
   const [propertySort, setPropertySort] = useState<{ key: keyof AssetRecord; direction: 'asc' | 'desc' } | null>(null);
+
+  // Derived state from Profile (with defaults)
+  const theme = profile?.theme || 'dark';
+  const language = (profile?.language as Language) || 'en';
 
   // Translation Helper
   const t = (key: string) => TRANSLATIONS[language][key] || key;
@@ -227,42 +227,6 @@ function App() {
        }
     }
   };
-
-  const loadDemoData = async () => {
-    if (!user || !user.id) return;
-    
-    if(window.confirm("This will add sample data to your database. Continue?")) {
-       setIsDataLoading(true);
-       try {
-         const payload = INITIAL_DATA.map(item => ({
-            user_id: user.id,
-            date: item.date,
-            type: item.type,
-            name: item.name,
-            action: item.action,
-            unit_price: item.unitPrice,
-            quantity: item.quantity,
-            amount: item.amount,
-            fee: item.fee,
-            interest_dividend: item.interestDividend,
-            maturity_date: item.maturityDate,
-            status: item.status,
-            remarks: item.remarks
-         }));
-         
-         const { error } = await supabase.from('assets').insert(payload);
-         if(error) throw error;
-         
-         await fetchRecords();
-       } catch(err) {
-         console.error(err);
-         alert("Failed to load demo data");
-       } finally {
-         setIsDataLoading(false);
-       }
-    }
-  };
-
 
   // --- STANDARD COMPONENT LOGIC BELOW ---
 
@@ -518,7 +482,7 @@ function App() {
                 transition={{ delay: 0.2 }}
                 className="text-xs text-slate-500 dark:text-slate-400 mt-1 whitespace-nowrap"
               >
-                {user.email}
+                {profile?.display_name || user.email}
               </motion.p>
             </div>
             {/* Close button for Mobile */}
@@ -1096,7 +1060,7 @@ function App() {
                           </div>
                           <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
                              <button
-                               onClick={() => setTheme('light')}
+                               onClick={() => updateProfile({ theme: 'light' })}
                                className={`p-2 rounded-md flex items-center gap-2 text-sm transition-all ${
                                  theme === 'light' ? 'bg-white shadow text-blue-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                                }`}
@@ -1105,7 +1069,7 @@ function App() {
                                 {t('theme_light')}
                              </button>
                              <button
-                               onClick={() => setTheme('dark')}
+                               onClick={() => updateProfile({ theme: 'dark' })}
                                className={`p-2 rounded-md flex items-center gap-2 text-sm transition-all ${
                                  theme === 'dark' ? 'bg-slate-700 shadow text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                                }`}
@@ -1128,7 +1092,7 @@ function App() {
                             <Globe size={18} className="text-slate-400" />
                             <select 
                                value={language}
-                               onChange={(e) => setLanguage(e.target.value as Language)}
+                               onChange={(e) => updateProfile({ language: e.target.value as Language })}
                                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
                             >
                                <option value="en">English</option>
@@ -1137,31 +1101,6 @@ function App() {
                             </select>
                           </div>
                        </div>
-                    </div>
-                 </div>
-
-                 {/* Data Management */}
-                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                          <Database size={20} className="text-slate-400" />
-                          Data Management
-                       </h3>
-                    </div>
-                    <div className="p-6">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-medium text-slate-900 dark:text-slate-100">Load Demo Data</p>
-                                <p className="text-sm text-slate-500 dark:text-slate-400">Populate the database with sample records (useful for testing).</p>
-                            </div>
-                            <button
-                              onClick={loadDemoData}
-                              disabled={isDataLoading}
-                              className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
-                            >
-                              {isDataLoading ? 'Loading...' : 'Load to DB'}
-                            </button>
-                        </div>
                     </div>
                  </div>
 

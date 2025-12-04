@@ -34,3 +34,10 @@ export interface ChartDataPoint {
   value: number;
   color: string;
 }
+
+export interface UserProfile {
+  id: string;
+  display_name?: string;
+  theme: 'light' | 'dark';
+  language: 'en' | 'zh' | 'ms';
+}

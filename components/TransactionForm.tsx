@@ -59,7 +59,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800 relative z-10 transition-colors duration-300"
           >
-            <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-20">
+            <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-20">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                 {initialData ? 'Edit Record' : 'New Record'}
               </h2>
@@ -73,8 +73,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
               if (!formData.name || !formData.amount || !formData.date) return;
               onSave(formData as Omit<AssetRecord, 'id'>);
               onClose();
-            }} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            }} className="p-4 sm:p-6 space-y-4">
+              {/* Row 1: Date & Type - Stack on mobile, Side-by-side on tablet */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Date</label>
                   <input
@@ -107,6 +108,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </div>
               </div>
 
+              {/* Row 2: Name - Always full width */}
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Name / Identifier</label>
                 <input
@@ -119,7 +121,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Row 3: Action & Status - Stack on mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Action</label>
                   {formData.type === AssetType.Property ? (
@@ -142,6 +145,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                     >
                       <option value="Buy">Buy</option>
                       <option value="Sold">Sold</option>
+                      <option value="Dividend">Dividend</option>
                     </select>
                   )}
                 </div>
@@ -159,8 +163,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                 <div className="col-span-2 sm:col-span-1">
+              {/* Row 4: Amount, Price, Qty - Stack all on mobile, 3-col on Tablet */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                 <div className="sm:col-span-1">
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Total Amount</label>
                   <input
                     type="number"
@@ -193,7 +198,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              {/* Row 5: Interest & Maturity - Stack on mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Int/Dividend</label>
                   <input
@@ -215,6 +221,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </div>
               </div>
 
+              {/* Row 6: Remarks - Always full width */}
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Remarks</label>
                 <textarea
