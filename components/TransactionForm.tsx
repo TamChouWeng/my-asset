@@ -11,8 +11,13 @@ interface TransactionFormProps {
 }
 
 const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSave, initialData }) => {
+  // Use local date instead of UTC to prevent 'yesterday' bug in Asian timezones
+  const getTodayDate = () => {
+    return new Date().toLocaleDateString('en-CA'); // Returns YYYY-MM-DD in local time
+  };
+
   const [formData, setFormData] = useState<Partial<AssetRecord>>({
-    date: new Date().toISOString().split('T')[0],
+    date: getTodayDate(),
     type: AssetType.Stock,
     status: AssetStatus.Active,
     action: 'Buy',
@@ -24,7 +29,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
       setFormData({ ...initialData });
     } else {
       setFormData({
-        date: new Date().toISOString().split('T')[0],
+        date: getTodayDate(),
         type: AssetType.Stock,
         status: AssetStatus.Active,
         action: 'Buy',

@@ -40,13 +40,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   const initChat = async () => {
     try {
-      const apiKey = process.env.API_KEY || '';
-      if (!apiKey) {
-        console.error("API Key missing");
-        return;
-      }
-      
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       // Prepare simplified data for context to save tokens and focus on content
       const simplifiedRecords = records.map(r => ({
@@ -92,6 +86,12 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
     } catch (error) {
       console.error("Failed to init chat:", error);
+      setMessages(prev => [...prev, {
+        id: 'error-init',
+        role: 'model',
+        text: t('chatbot_error'),
+        isError: true
+      }]);
     }
   };
 

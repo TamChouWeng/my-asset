@@ -4,6 +4,9 @@ import { INITIAL_DATA, TRANSLATIONS, Language } from './constants';
 import PieChartComponent from './components/PieChartComponent';
 import TransactionForm from './components/TransactionForm';
 import Chatbot from './components/Chatbot';
+import LoginScreen from './components/LoginScreen';
+import { useAuth } from './contexts/AuthContext';
+import { supabase } from './lib/supabase';
 import { downloadCSV } from './utils/csvHelper';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -32,11 +35,17 @@ import {
   Settings,
   Moon,
   Sun,
-  Globe
+  Globe,
+  LogOut,
+  Database,
+  Loader2
 } from 'lucide-react';
 
 function App() {
-  const [records, setRecords] = useState<AssetRecord[]>(INITIAL_DATA);
+  const { user, loading, signOut } = useAuth();
+  const [records, setRecords] = useState<AssetRecord[]>([]);
+  const [isDataLoading, setIsDataLoading] = useState(false);
+
   const [view, setView] = useState<'dashboard' | 'property' | 'list' | 'settings'>('dashboard');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AssetRecord | null>(null);
@@ -69,6 +78,196 @@ function App() {
 
   // Translation Helper
   const t = (key: string) => TRANSLATIONS[language][key] || key;
+
+  // --- DATA FETCHING ---
+  useEffect(() => {
+    if (user) {
+      fetchRecords();
+    }
+  }, [user]);
+
+  const fetchRecords = async () => {
+    setIsDataLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('assets')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        // Map DB snake_case to CamelCase if necessary, or ensure Types match
+        // Assuming the DB table columns match the interface roughly or exactly
+        // We might need to map 'interest_dividend' to 'interestDividend' etc if using standard SQL conventions
+        // For now, assuming you create columns matching the JSON or use a mapper.
+        // Let's implement a simple mapper to be safe.
+        const mappedData: AssetRecord[] = data.map(item => ({
+          id: item.id,
+          date: item.date,
+          type: item.type,
+          name: item.name,
+          action: item.action,
+          unitPrice: item.unit_price || item.unitPrice,
+          quantity: item.quantity,
+          amount: item.amount,
+          fee: item.fee,
+          interestDividend: item.interest_dividend || item.interestDividend,
+          maturityDate: item.maturity_date || item.maturityDate,
+          status: item.status,
+          remarks: item.remarks
+        }));
+        setRecords(mappedData);
+      }
+    } catch (error) {
+      console.error('Error fetching records:', error);
+    } finally {
+      setIsDataLoading(false);
+    }
+  };
+
+  // --- ACTIONS ---
+
+  const handleSave = async (data: Omit<AssetRecord, 'id'>) => {
+    if (!user || !user.id) {
+      alert("You must be logged in to save records.");
+      return;
+    }
+
+    try {
+      // Map back to snake_case for DB
+      const dbPayload = {
+        user_id: user.id,
+        date: data.date,
+        type: data.type,
+        name: data.name,
+        action: data.action,
+        unit_price: data.unitPrice,
+        quantity: data.quantity,
+        amount: data.amount,
+        fee: data.fee,
+        interest_dividend: data.interestDividend,
+        maturity_date: data.maturityDate,
+        status: data.status,
+        remarks: data.remarks
+      };
+
+      if (editingRecord) {
+        const { error } = await supabase
+          .from('assets')
+          .update(dbPayload)
+          .eq('id', editingRecord.id);
+        
+        if (error) throw error;
+        
+        // Optimistic Update
+        setRecords(prev => prev.map(r => r.id === editingRecord.id ? { ...data, id: editingRecord.id } : r));
+      } else {
+        const { data: inserted, error } = await supabase
+          .from('assets')
+          .insert([dbPayload])
+          .select();
+
+        if (error) throw error;
+        
+        if (inserted && inserted.length > 0) {
+           // We need to map the returned row back to AssetRecord
+           const newRecord = inserted[0];
+           const mappedNew: AssetRecord = {
+              id: newRecord.id,
+              date: newRecord.date,
+              type: newRecord.type,
+              name: newRecord.name,
+              action: newRecord.action,
+              unitPrice: newRecord.unit_price,
+              quantity: newRecord.quantity,
+              amount: newRecord.amount,
+              fee: newRecord.fee,
+              interestDividend: newRecord.interest_dividend,
+              maturityDate: newRecord.maturity_date,
+              status: newRecord.status,
+              remarks: newRecord.remarks
+           };
+           setRecords(prev => [mappedNew, ...prev]);
+        }
+      }
+      setEditingRecord(null);
+    } catch (error) {
+      console.error("Error saving:", error);
+      alert("Failed to save record.");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this record?')) {
+      try {
+        const { error } = await supabase.from('assets').delete().eq('id', id);
+        if (error) throw error;
+
+        setRecords(prev => prev.filter(r => r.id !== id));
+        if (selectedIds.has(id)) {
+          const newSelected = new Set(selectedIds);
+          newSelected.delete(id);
+          setSelectedIds(newSelected);
+        }
+      } catch (error) {
+        console.error("Error deleting:", error);
+      }
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (window.confirm(`Are you sure you want to delete ${selectedIds.size} records?`)) {
+       try {
+        const ids = Array.from(selectedIds);
+        const { error } = await supabase.from('assets').delete().in('id', ids);
+        if (error) throw error;
+
+        setRecords(prev => prev.filter(r => !selectedIds.has(r.id)));
+        setSelectedIds(new Set());
+       } catch (error) {
+         console.error("Error batch deleting:", error);
+       }
+    }
+  };
+
+  const loadDemoData = async () => {
+    if (!user || !user.id) return;
+    
+    if(window.confirm("This will add sample data to your database. Continue?")) {
+       setIsDataLoading(true);
+       try {
+         const payload = INITIAL_DATA.map(item => ({
+            user_id: user.id,
+            date: item.date,
+            type: item.type,
+            name: item.name,
+            action: item.action,
+            unit_price: item.unitPrice,
+            quantity: item.quantity,
+            amount: item.amount,
+            fee: item.fee,
+            interest_dividend: item.interestDividend,
+            maturity_date: item.maturityDate,
+            status: item.status,
+            remarks: item.remarks
+         }));
+         
+         const { error } = await supabase.from('assets').insert(payload);
+         if(error) throw error;
+         
+         await fetchRecords();
+       } catch(err) {
+         console.error(err);
+         alert("Failed to load demo data");
+       } finally {
+         setIsDataLoading(false);
+       }
+    }
+  };
+
+
+  // --- STANDARD COMPONENT LOGIC BELOW ---
 
   // Theme Effect
   useEffect(() => {
@@ -203,34 +402,6 @@ function App() {
     return sortedPropertyRecords.slice(start, start + propertyRowsPerPage);
   }, [sortedPropertyRecords, propertyPage, propertyRowsPerPage]);
 
-  // Handlers
-  const handleSave = (data: Omit<AssetRecord, 'id'>) => {
-    if (editingRecord) {
-      setRecords(prev => prev.map(r => r.id === editingRecord.id ? { ...data, id: editingRecord.id } : r));
-    } else {
-      setRecords(prev => [...prev, { ...data, id: Math.random().toString(36).substr(2, 9) }]);
-    }
-    setEditingRecord(null);
-  };
-
-  const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this record?')) {
-      setRecords(prev => prev.filter(r => r.id !== id));
-      if (selectedIds.has(id)) {
-        const newSelected = new Set(selectedIds);
-        newSelected.delete(id);
-        setSelectedIds(newSelected);
-      }
-    }
-  };
-
-  const handleBatchDelete = () => {
-    if (window.confirm(`Are you sure you want to delete ${selectedIds.size} records?`)) {
-      setRecords(prev => prev.filter(r => !selectedIds.has(r.id)));
-      setSelectedIds(new Set());
-    }
-  };
-
   const handleEdit = (record: AssetRecord) => {
     setEditingRecord(record);
     setIsFormOpen(true);
@@ -294,6 +465,20 @@ function App() {
     setIsMobileOpen(false);
   }, [view]);
 
+  // --- RENDER ---
+  
+  if (loading) {
+     return (
+       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+         <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+       </div>
+     );
+  }
+
+  if (!user) {
+    return <LoginScreen />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 relative transition-colors duration-300">
       
@@ -336,7 +521,7 @@ function App() {
                 transition={{ delay: 0.2 }}
                 className="text-xs text-slate-500 dark:text-slate-400 mt-1 whitespace-nowrap"
               >
-                Your best portfolio tracker
+                {user.email}
               </motion.p>
             </div>
             {/* Close button for Mobile */}
@@ -457,9 +642,10 @@ function App() {
                   {view === 'list' && t('title_records')}
                   {view === 'settings' && t('title_settings')}
                 </h2>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">
-                   {view === 'settings' ? t('subtitle_settings') : t('subtitle_dashboard')}
-                </p>
+                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
+                   <span>{view === 'settings' ? t('subtitle_settings') : t('subtitle_dashboard')}</span>
+                   {isDataLoading && <Loader2 size={12} className="animate-spin text-blue-500" />}
+                </div>
               </div>
               
               {view !== 'settings' && (
@@ -483,20 +669,14 @@ function App() {
               )}
             </motion.div>
 
+            {/* VIEWS */}
             {view === 'dashboard' && (
               <motion.div variants={itemVariants} className="space-y-6">
-                
-                {/* Dashboard Grid Layout - Height adjusted to fit viewport on desktop */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[calc(100vh-14rem)]">
-                  
-                  {/* Left Column: Pie Chart (2/3 width) */}
                   <div className="lg:col-span-2 h-full">
                      <PieChartComponent data={records} theme={theme} t={t} />
                   </div>
-
-                  {/* Right Column: Stats (1/3 width, stacked) */}
                   <div className="flex flex-col gap-4 h-full">
-                    {/* Total Assets Card */}
                     <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all flex-1">
                       <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full shrink-0">
                         <Wallet size={24} />
@@ -507,7 +687,6 @@ function App() {
                       </div>
                     </motion.div>
 
-                    {/* Top Asset Card */}
                     <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all flex-1">
                       <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full shrink-0">
                         <TrendingUp size={24} />
@@ -519,7 +698,6 @@ function App() {
                       </div>
                     </motion.div>
 
-                    {/* Total Records Card */}
                     <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all flex-1">
                       <div className="p-3 bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full shrink-0">
                         <Table2 size={24} />
@@ -531,14 +709,11 @@ function App() {
                     </motion.div>
                   </div>
                 </div>
-
               </motion.div>
             )}
 
             {view === 'property' && (
               <motion.div variants={itemVariants} className="space-y-6">
-                
-                {/* Property Selection Dropdown */}
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-between transition-colors">
                    <div className="flex items-center gap-3">
                       <div className="p-2 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg">
@@ -558,7 +733,6 @@ function App() {
                    </select>
                 </div>
 
-                {/* Property Cash Flow Analysis Widget */}
                 <motion.div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-red-100 dark:bg-red-500/10 text-red-500 dark:text-red-400 rounded-lg">
@@ -604,7 +778,6 @@ function App() {
                         </div>
                       </div>
                       
-                      {/* Visual Bar */}
                       <div className="relative h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div className="absolute top-0 bottom-0 left-0 bg-red-500 transition-all duration-500" style={{ width: propertyMetrics.totalInvested > 0 ? '100%' : '0%' }}></div>
                         <div className="absolute top-0 bottom-0 left-0 bg-emerald-500 transition-all duration-500" 
@@ -617,7 +790,6 @@ function App() {
                         <span>{t('prop_profit_phase')}</span>
                       </div>
 
-                      {/* Property Transactions List with Sorting & Pagination */}
                       <div className="mt-8">
                         <div className="flex justify-between items-center mb-4">
                            <h4 className="text-md font-medium text-slate-900 dark:text-slate-200">{t('prop_transactions')}</h4>
@@ -635,387 +807,8 @@ function App() {
                         </div>
                         
                         <div className="bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-col">
-                            {/* Scrollable Wrapper for Mobile Table */}
                             <div className="overflow-x-auto w-full">
                                 <table className="w-full text-sm text-left min-w-[600px]">
                                   <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
                                     <tr>
-                                      <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('date')}>
-                                        <div className="flex items-center gap-1">
-                                          {t('table_date')}
-                                          <ArrowUpDown size={12} className={propertySort?.key === 'date' ? 'text-blue-500' : 'text-slate-400'} />
-                                        </div>
-                                      </th>
-                                      <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('name')}>
-                                        <div className="flex items-center gap-1">
-                                          {t('table_name')}
-                                          <ArrowUpDown size={12} className={propertySort?.key === 'name' ? 'text-blue-500' : 'text-slate-400'} />
-                                        </div>
-                                      </th>
-                                      <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('action')}>
-                                        <div className="flex items-center gap-1">
-                                          {t('table_action')}
-                                          <ArrowUpDown size={12} className={propertySort?.key === 'action' ? 'text-blue-500' : 'text-slate-400'} />
-                                        </div>
-                                      </th>
-                                      <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('amount')}>
-                                        <div className="flex items-center gap-1 justify-end">
-                                          {t('table_amount')}
-                                          <ArrowUpDown size={12} className={propertySort?.key === 'amount' ? 'text-blue-500' : 'text-slate-400'} />
-                                        </div>
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                                    {paginatedPropertyRecords.length > 0 ? (
-                                      paginatedPropertyRecords.map(r => (
-                                        <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
-                                          <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{r.date}</td>
-                                          <td className="px-4 py-3 text-slate-900 dark:text-slate-200 whitespace-nowrap">{r.name}</td>
-                                          <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{r.action}</td>
-                                          <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-200 whitespace-nowrap">{formatCurrency(r.amount)}</td>
-                                        </tr>
-                                      ))
-                                    ) : (
-                                      <tr>
-                                        <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
-                                          No records found
-                                        </td>
-                                      </tr>
-                                    )}
-                                  </tbody>
-                                </table>
-                            </div>
-                            
-                            {/* Pagination Controls */}
-                            {propertyTotalPages > 1 && (
-                              <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
-                                <span>Page {propertyPage} of {propertyTotalPages}</span>
-                                <div className="flex items-center gap-2">
-                                  <button 
-                                    onClick={() => setPropertyPage(p => Math.max(1, p - 1))}
-                                    disabled={propertyPage === 1}
-                                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded disabled:opacity-50"
-                                  >
-                                    <ChevronLeft size={16} />
-                                  </button>
-                                  <button 
-                                    onClick={() => setPropertyPage(p => Math.min(propertyTotalPages, p + 1))}
-                                    disabled={propertyPage === propertyTotalPages}
-                                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded disabled:opacity-50"
-                                  >
-                                    <ChevronRight size={16} />
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </motion.div>
-              </motion.div>
-            )}
-
-            {view === 'list' && (
-              <motion.div variants={itemVariants} className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col transition-colors">
-                {/* Filters */}
-                <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-4 justify-between">
-                  <div className="flex flex-col sm:flex-row gap-4 flex-1">
-                    <div className="relative flex-1">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                      <input 
-                        type="text" 
-                        placeholder={t('search_placeholder')}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500 dark:placeholder-slate-600 transition-colors"
-                      />
-                    </div>
-                    <div className="relative w-full sm:w-48">
-                      <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                      <select 
-                        value={filterType}
-                        onChange={(e) => setFilterType(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-colors"
-                      >
-                        <option value="All">{t('all_types')}</option>
-                        {Object.values(AssetType).map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    {/* Rows per page dropdown */}
-                    <div className="relative w-full sm:w-32">
-                      <ListFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                      <select 
-                        value={itemsPerPage}
-                        onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                        className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none transition-colors"
-                      >
-                        <option value={10}>10 / page</option>
-                        <option value={20}>20 / page</option>
-                        <option value={50}>50 / page</option>
-                        <option value={100}>100 / page</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Batch Actions */}
-                  <AnimatePresence>
-                    {selectedIds.size > 0 && (
-                      <motion.button
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        onClick={handleBatchDelete}
-                        className="flex items-center gap-2 px-4 py-2 bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/20 transition-colors"
-                      >
-                        <Trash2 size={16} />
-                        <span>{t('btn_delete_selected')} ({selectedIds.size})</span>
-                      </motion.button>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase bg-slate-100 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 transition-colors">
-                      <tr>
-                        <th className="px-4 py-3 w-10">
-                          <div className="flex items-center">
-                            <input 
-                              type="checkbox" 
-                              checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
-                              onChange={toggleSelectAll}
-                              className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-slate-900 cursor-pointer"
-                            />
-                          </div>
-                        </th>
-                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('date')}>
-                          <div className="flex items-center gap-1">
-                            {t('table_date')}
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'date' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
-                          </div>
-                        </th>
-                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('type')}>
-                          <div className="flex items-center gap-1">
-                            {t('table_type')}
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'type' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
-                          </div>
-                        </th>
-                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('name')}>
-                          <div className="flex items-center gap-1">
-                            {t('table_name')}
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'name' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
-                          </div>
-                        </th>
-                        <th className="px-4 py-3 whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('action')}>
-                          <div className="flex items-center gap-1">
-                            {t('table_action')}
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'action' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
-                          </div>
-                        </th>
-                        <th className="px-4 py-3 text-right whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('amount')}>
-                          <div className="flex items-center gap-1 justify-end">
-                            {t('table_amount')}
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'amount' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
-                          </div>
-                        </th>
-                        <th className="px-4 py-3 text-center whitespace-nowrap cursor-pointer hover:text-slate-900 dark:hover:text-slate-200 transition-colors" onClick={() => handleSort('status')}>
-                          <div className="flex items-center gap-1 justify-center">
-                            {t('table_status')}
-                            <ArrowUpDown size={14} className={sortConfig?.key === 'status' ? 'text-blue-400' : 'text-slate-500 dark:text-slate-600'} />
-                          </div>
-                        </th>
-                        <th className="px-4 py-3 text-center whitespace-nowrap">{t('table_actions')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                      <AnimatePresence>
-                      {paginatedRecords.length > 0 ? (
-                        paginatedRecords.map((record) => (
-                          <motion.tr 
-                            key={record.id} 
-                            layout
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            style={{ display: 'table-row' }}
-                            className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 group transition-colors ${selectedIds.has(record.id) ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}
-                          >
-                            <td className="px-4 py-3 text-center">
-                              <input 
-                                type="checkbox" 
-                                checked={selectedIds.has(record.id)}
-                                onChange={() => toggleSelect(record.id)}
-                                className="w-4 h-4 rounded border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-white dark:focus:ring-offset-slate-900 cursor-pointer"
-                              />
-                            </td>
-                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{record.date}</td>
-                            <td className="px-4 py-3">
-                              <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                {record.type}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-200">
-                              {record.name}
-                              {record.remarks && <div className="text-xs text-slate-500 font-normal truncate max-w-[200px]">{record.remarks}</div>}
-                            </td>
-                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{record.action}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-slate-700 dark:text-slate-300">
-                              {formatCurrency(record.amount)}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                record.status === 'Active' ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-                              }`}>
-                                {record.status}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <div className="flex justify-center gap-2">
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); handleEdit(record); }}
-                                  className="p-1.5 text-blue-500 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
-                                  title="Edit"
-                                >
-                                  <Edit2 size={16} />
-                                </button>
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); handleDelete(record.id); }}
-                                  className="p-1.5 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
-                                  title="Delete"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </td>
-                          </motion.tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={8} className="px-4 py-8 text-center text-slate-500">
-                            {t('no_records')}
-                          </td>
-                        </tr>
-                      )}
-                      </AnimatePresence>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination Footer */}
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-slate-500 dark:text-slate-400 transition-colors">
-                  <span>
-                    Showing {paginatedRecords.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0} to {Math.min(currentPage * itemsPerPage, sortedRecords.length)} of {sortedRecords.length} entries
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <span className="font-medium text-slate-900 dark:text-slate-200">
-                      Page {currentPage} of {Math.max(1, totalPages)}
-                    </span>
-                    <button 
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages || totalPages === 0}
-                      className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ChevronRight size={18} />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {view === 'settings' && (
-              <motion.div variants={itemVariants} className="space-y-6">
-                
-                {/* Theme Settings */}
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 transition-colors">
-                  <div className="flex items-start gap-4 mb-6">
-                     <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full">
-                        {theme === 'dark' ? <Moon size={24} /> : <Sun size={24} />}
-                     </div>
-                     <div>
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('setting_theme')}</h3>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm">{t('setting_theme_desc')}</p>
-                     </div>
-                  </div>
-                  
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => setTheme('light')}
-                      className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${theme === 'light' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                    >
-                      <Sun size={32} />
-                      <span className="font-medium">{t('theme_light')}</span>
-                    </button>
-                    <button
-                      onClick={() => setTheme('dark')}
-                      className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${theme === 'dark' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                    >
-                      <Moon size={32} />
-                      <span className="font-medium">{t('theme_dark')}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Language Settings */}
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 transition-colors">
-                  <div className="flex items-start gap-4 mb-6">
-                     <div className="p-3 bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full">
-                        <Globe size={24} />
-                     </div>
-                     <div>
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('setting_language')}</h3>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm">{t('setting_language_desc')}</p>
-                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {(['en', 'zh', 'ms'] as const).map((lang) => (
-                      <button
-                        key={lang}
-                        onClick={() => setLanguage(lang)}
-                        className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
-                          language === lang 
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
-                            : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                        }`}
-                      >
-                        <span className="font-medium">
-                          {lang === 'en' ? 'English' : lang === 'zh' ? '中文 (Chinese)' : 'Bahasa Melayu'}
-                        </span>
-                        {language === lang && <Check size={20} className="text-blue-600 dark:text-blue-400" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-              </motion.div>
-            )}
-          </motion.div>
-        </div>
-      </main>
-
-      {/* Transaction Form Modal */}
-      <TransactionForm 
-        isOpen={isFormOpen} 
-        onClose={() => { setIsFormOpen(false); setEditingRecord(null); }}
-        onSave={handleSave}
-        initialData={editingRecord}
-      />
-      
-      {/* AI Chatbot */}
-      <Chatbot records={records} t={t} />
-
-    </div>
-  );
-}
-
-export default App;
+                                      <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={()
