@@ -40,7 +40,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -54,7 +54,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-800 relative z-10 transition-colors duration-300"
           >
-            <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between items-center p-6 border-b border-slate-200 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-20">
               <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
                 {initialData ? 'Edit Record' : 'New Record'}
               </h2>
@@ -69,7 +69,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
               onSave(formData as Omit<AssetRecord, 'id'>);
               onClose();
             }} className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Date</label>
                   <input
@@ -106,24 +106,42 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Action</label>
-                  <input
-                    type="text"
-                    list="actions"
-                    value={formData.action || ''}
-                    onChange={e => setFormData({ ...formData, action: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
-                  />
-                  <datalist id="actions">
-                    <option value="Buy" />
-                    <option value="Sell" />
-                    <option value="Dividend" />
-                    <option value="Deposit" />
-                    <option value="Self contribute" />
-                    <option value="Employee contribute" />
-                  </datalist>
+                  {formData.type === AssetType.Property ? (
+                    <select
+                      value={formData.action || ''}
+                      onChange={e => setFormData({ ...formData, action: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    >
+                      <option value="">Select Action</option>
+                      <option value="Pay">Pay</option>
+                      <option value="Rent">Rent</option>
+                      <option value="Buy">Buy</option>
+                      <option value="Sold">Sold</option>
+                      <option value="Renovation">Renovation</option>
+                      <option value="Maintenance">Maintenance</option>
+                    </select>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        list="actions"
+                        value={formData.action || ''}
+                        onChange={e => setFormData({ ...formData, action: e.target.value })}
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                      />
+                      <datalist id="actions">
+                        <option value="Buy" />
+                        <option value="Sell" />
+                        <option value="Dividend" />
+                        <option value="Deposit" />
+                        <option value="Self contribute" />
+                        <option value="Employee contribute" />
+                      </datalist>
+                    </>
+                  )}
                 </div>
                  <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Status</label>
@@ -139,7 +157,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                  <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Total Amount</label>
                   <input
@@ -173,7 +191,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Int/Dividend</label>
                   <input

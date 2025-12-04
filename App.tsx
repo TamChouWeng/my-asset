@@ -59,6 +59,14 @@ function App() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(20);
 
+  // Property Selection State
+  const [selectedProperty, setSelectedProperty] = useState<string>('All');
+
+  // Property Table State
+  const [propertyPage, setPropertyPage] = useState(1);
+  const [propertyRowsPerPage, setPropertyRowsPerPage] = useState(5);
+  const [propertySort, setPropertySort] = useState<{ key: keyof AssetRecord; direction: 'asc' | 'desc' } | null>(null);
+
   // Translation Helper
   const t = (key: string) => TRANSLATIONS[language][key] || key;
 
@@ -71,6 +79,11 @@ function App() {
       root.classList.remove('dark');
     }
   }, [theme]);
+
+  // Reset Property Pagination on Filter Change
+  useEffect(() => {
+    setPropertyPage(1);
+  }, [selectedProperty]);
 
   // Computed Metrics
   const totalValue = useMemo(() => {
@@ -92,8 +105,17 @@ function App() {
   }, [records]);
 
   // Property Specific Analysis
+  const propertyNames = useMemo(() => {
+    const props = records.filter(r => r.type === AssetType.Property).map(r => r.name);
+    return Array.from(new Set(props)).sort();
+  }, [records]);
+
   const propertyMetrics = useMemo(() => {
-    const propertyRecords = records.filter(r => r.type === AssetType.Property);
+    // Filter by selected property name if not 'All'
+    const propertyRecords = records.filter(r => 
+      r.type === AssetType.Property && 
+      (selectedProperty === 'All' || r.name === selectedProperty)
+    );
     
     let totalInvested = 0; // Outflow (Buy, Installment, Pay, Renovation)
     let totalReturned = 0; // Inflow (Rent, Income, Sold)
@@ -118,7 +140,7 @@ function App() {
       hasProperties: propertyRecords.length > 0,
       records: propertyRecords
     };
-  }, [records]);
+  }, [records, selectedProperty]);
 
   const filteredRecords = useMemo(() => {
     return records
@@ -156,6 +178,30 @@ function App() {
   useEffect(() => {
     setCurrentPage(1);
   }, [filterType, searchTerm, sortConfig, itemsPerPage]);
+
+  // Property Table Logic (Sorting & Pagination)
+  const sortedPropertyRecords = useMemo(() => {
+    let recs = [...propertyMetrics.records];
+    if (propertySort) {
+      recs.sort((a, b) => {
+        const aVal = a[propertySort.key] ?? '';
+        const bVal = b[propertySort.key] ?? '';
+        if (aVal < bVal) return propertySort.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return propertySort.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    } else {
+       // Default sort by date desc
+       recs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    return recs;
+  }, [propertyMetrics.records, propertySort]);
+
+  const propertyTotalPages = Math.ceil(sortedPropertyRecords.length / propertyRowsPerPage);
+  const paginatedPropertyRecords = useMemo(() => {
+    const start = (propertyPage - 1) * propertyRowsPerPage;
+    return sortedPropertyRecords.slice(start, start + propertyRowsPerPage);
+  }, [sortedPropertyRecords, propertyPage, propertyRowsPerPage]);
 
   // Handlers
   const handleSave = (data: Omit<AssetRecord, 'id'>) => {
@@ -196,6 +242,14 @@ function App() {
       direction = 'desc';
     }
     setSortConfig({ key, direction });
+  };
+
+  const handlePropertySort = (key: keyof AssetRecord) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (propertySort && propertySort.key === key && propertySort.direction === 'asc') {
+      direction = 'desc';
+    }
+    setPropertySort({ key, direction });
   };
 
   const toggleSelectAll = () => {
@@ -506,6 +560,27 @@ function App() {
 
             {view === 'property' && (
               <motion.div variants={itemVariants} className="space-y-6">
+                
+                {/* Property Selection Dropdown */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-between transition-colors">
+                   <div className="flex items-center gap-3">
+                      <div className="p-2 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg">
+                        <Filter size={20} />
+                      </div>
+                      <span className="font-medium text-slate-700 dark:text-slate-300">Select Property:</span>
+                   </div>
+                   <select
+                      value={selectedProperty}
+                      onChange={(e) => setSelectedProperty(e.target.value)}
+                      className="px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer transition-colors"
+                   >
+                      <option value="All">All Properties</option>
+                      {propertyNames.map(name => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                   </select>
+                </div>
+
                 {/* Property Cash Flow Analysis Widget */}
                 <motion.div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
                   <div className="flex items-center gap-3 mb-6">
@@ -514,7 +589,9 @@ function App() {
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('prop_cash_flow')}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">{t('prop_desc')}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {selectedProperty === 'All' ? t('prop_desc') : `${selectedProperty} - ${t('prop_desc')}`}
+                      </p>
                     </div>
                   </div>
 
@@ -563,30 +640,93 @@ function App() {
                         <span>{t('prop_profit_phase')}</span>
                       </div>
 
-                      {/* Property Transactions List */}
+                      {/* Property Transactions List with Sorting & Pagination */}
                       <div className="mt-8">
-                        <h4 className="text-md font-medium text-slate-900 dark:text-slate-200 mb-4">{t('prop_transactions')}</h4>
+                        <div className="flex justify-between items-center mb-4">
+                           <h4 className="text-md font-medium text-slate-900 dark:text-slate-200">{t('prop_transactions')}</h4>
+                           <div className="flex items-center gap-2 text-xs">
+                             <select 
+                               value={propertyRowsPerPage} 
+                               onChange={(e) => { setPropertyRowsPerPage(Number(e.target.value)); setPropertyPage(1); }}
+                               className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 focus:outline-none"
+                             >
+                               <option value={5}>5 / page</option>
+                               <option value={10}>10 / page</option>
+                               <option value={20}>20 / page</option>
+                             </select>
+                           </div>
+                        </div>
                         <div className="bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
                             <table className="w-full text-sm text-left">
                               <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
                                 <tr>
-                                  <th className="px-4 py-3">{t('table_date')}</th>
-                                  <th className="px-4 py-3">{t('table_name')}</th>
-                                  <th className="px-4 py-3">{t('table_action')}</th>
-                                  <th className="px-4 py-3 text-right">{t('table_amount')}</th>
+                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => handlePropertySort('date')}>
+                                    <div className="flex items-center gap-1">
+                                      {t('table_date')}
+                                      <ArrowUpDown size={12} className={propertySort?.key === 'date' ? 'text-blue-500' : 'text-slate-400'} />
+                                    </div>
+                                  </th>
+                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => handlePropertySort('name')}>
+                                    <div className="flex items-center gap-1">
+                                      {t('table_name')}
+                                      <ArrowUpDown size={12} className={propertySort?.key === 'name' ? 'text-blue-500' : 'text-slate-400'} />
+                                    </div>
+                                  </th>
+                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => handlePropertySort('action')}>
+                                    <div className="flex items-center gap-1">
+                                      {t('table_action')}
+                                      <ArrowUpDown size={12} className={propertySort?.key === 'action' ? 'text-blue-500' : 'text-slate-400'} />
+                                    </div>
+                                  </th>
+                                  <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800" onClick={() => handlePropertySort('amount')}>
+                                    <div className="flex items-center gap-1 justify-end">
+                                      {t('table_amount')}
+                                      <ArrowUpDown size={12} className={propertySort?.key === 'amount' ? 'text-blue-500' : 'text-slate-400'} />
+                                    </div>
+                                  </th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                                {propertyMetrics.records.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(r => (
-                                  <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
-                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{r.date}</td>
-                                    <td className="px-4 py-3 text-slate-900 dark:text-slate-200">{r.name}</td>
-                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{r.action}</td>
-                                    <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-200">{formatCurrency(r.amount)}</td>
+                                {paginatedPropertyRecords.length > 0 ? (
+                                  paginatedPropertyRecords.map(r => (
+                                    <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{r.date}</td>
+                                      <td className="px-4 py-3 text-slate-900 dark:text-slate-200">{r.name}</td>
+                                      <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{r.action}</td>
+                                      <td className="px-4 py-3 text-right text-slate-900 dark:text-slate-200">{formatCurrency(r.amount)}</td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr>
+                                    <td colSpan={4} className="px-4 py-6 text-center text-slate-500">
+                                      No records found
+                                    </td>
                                   </tr>
-                                ))}
+                                )}
                               </tbody>
                             </table>
+                            {/* Pagination Controls */}
+                            {propertyTotalPages > 1 && (
+                              <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
+                                <span>Page {propertyPage} of {propertyTotalPages}</span>
+                                <div className="flex items-center gap-2">
+                                  <button 
+                                    onClick={() => setPropertyPage(p => Math.max(1, p - 1))}
+                                    disabled={propertyPage === 1}
+                                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded disabled:opacity-50"
+                                  >
+                                    <ChevronLeft size={16} />
+                                  </button>
+                                  <button 
+                                    onClick={() => setPropertyPage(p => Math.min(propertyTotalPages, p + 1))}
+                                    disabled={propertyPage === propertyTotalPages}
+                                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded disabled:opacity-50"
+                                  >
+                                    <ChevronRight size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                         </div>
                       </div>
                     </>

@@ -110,7 +110,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t })
                 data={aggregatedData}
                 cx="50%"
                 cy="45%"
-                outerRadius="55%"
+                outerRadius="75%" 
                 dataKey="value"
                 stroke="none"
                 // Labels removed as per request
