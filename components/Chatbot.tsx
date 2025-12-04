@@ -40,7 +40,11 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   const initChat = async () => {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error("API Key not found");
+      }
+      const ai = new GoogleGenAI({ apiKey });
       
       // Prepare simplified data for context to save tokens and focus on content
       const simplifiedRecords = records.map(r => ({

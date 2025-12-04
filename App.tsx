@@ -38,7 +38,8 @@ import {
   Globe,
   LogOut,
   Database,
-  Loader2
+  Loader2,
+  User
 } from 'lucide-react';
 
 function App() {
@@ -97,11 +98,7 @@ function App() {
       if (error) throw error;
 
       if (data) {
-        // Map DB snake_case to CamelCase if necessary, or ensure Types match
-        // Assuming the DB table columns match the interface roughly or exactly
-        // We might need to map 'interest_dividend' to 'interestDividend' etc if using standard SQL conventions
-        // For now, assuming you create columns matching the JSON or use a mapper.
-        // Let's implement a simple mapper to be safe.
+        // Map DB snake_case to CamelCase
         const mappedData: AssetRecord[] = data.map(item => ({
           id: item.id,
           date: item.date,
@@ -171,7 +168,7 @@ function App() {
         if (error) throw error;
         
         if (inserted && inserted.length > 0) {
-           // We need to map the returned row back to AssetRecord
+           // Map the returned row back to AssetRecord
            const newRecord = inserted[0];
            const mappedNew: AssetRecord = {
               id: newRecord.id,
@@ -811,4 +808,403 @@ function App() {
                                 <table className="w-full text-sm text-left min-w-[600px]">
                                   <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
                                     <tr>
-                                      <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={()
+                                      <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('date')}>
+                                        <div className="flex items-center gap-1">
+                                          {t('table_date')}
+                                          <ArrowUpDown size={12} className="opacity-50" />
+                                        </div>
+                                      </th>
+                                      <th className="px-4 py-3 whitespace-nowrap">{t('table_name')}</th>
+                                      <th className="px-4 py-3 whitespace-nowrap">{t('table_action')}</th>
+                                      <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('amount')}>
+                                        <div className="flex items-center justify-end gap-1">
+                                          {t('table_amount')}
+                                          <ArrowUpDown size={12} className="opacity-50" />
+                                        </div>
+                                      </th>
+                                      <th className="px-4 py-3 whitespace-nowrap">{t('table_status')}</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {paginatedPropertyRecords.map((item) => (
+                                      <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                        <td className="px-4 py-3">{item.date}</td>
+                                        <td className="px-4 py-3 font-medium">{item.name}</td>
+                                        <td className="px-4 py-3">
+                                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                            ['Buy', 'Pay', 'Installment', 'Renovation'].includes(item.action) 
+                                              ? 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400' 
+                                              : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                          }`}>
+                                            {item.action}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.amount)}</td>
+                                        <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{item.status}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                            </div>
+                            
+                            {/* Pagination Controls */}
+                            {propertyTotalPages > 1 && (
+                              <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm">
+                                <button 
+                                  onClick={() => setPropertyPage(p => Math.max(1, p - 1))}
+                                  disabled={propertyPage === 1}
+                                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <ChevronLeft size={16} />
+                                </button>
+                                <span className="text-slate-500 dark:text-slate-400">
+                                  Page {propertyPage} of {propertyTotalPages}
+                                </span>
+                                <button 
+                                  onClick={() => setPropertyPage(p => Math.min(propertyTotalPages, p + 1))}
+                                  disabled={propertyPage === propertyTotalPages}
+                                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <ChevronRight size={16} />
+                                </button>
+                              </div>
+                            )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
+
+            {view === 'list' && (
+              <motion.div variants={itemVariants} className="space-y-6">
+                {/* Filters */}
+                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 transition-colors">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder={t('search_placeholder')}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-slate-400"
+                    />
+                  </div>
+                  <div className="flex gap-4">
+                    <select
+                      value={filterType}
+                      onChange={(e) => setFilterType(e.target.value)}
+                      className="px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
+                    >
+                      <option value="All">{t('all_types')}</option>
+                      {Object.values(AssetType).map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                    
+                    {selectedIds.size > 0 && (
+                      <button 
+                        onClick={handleBatchDelete}
+                        className="px-4 py-2 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors flex items-center gap-2"
+                      >
+                        <Trash2 size={18} />
+                        <span className="hidden sm:inline">{t('btn_delete_selected')}</span>
+                        <span className="sm:hidden">({selectedIds.size})</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Main Table */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors flex flex-col">
+                  <div className="overflow-x-auto w-full">
+                    <table className="w-full text-sm text-left min-w-[900px]">
+                      <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
+                        <tr>
+                          <th className="px-4 py-3 w-10">
+                            <div className="flex items-center justify-center">
+                              <input 
+                                type="checkbox" 
+                                checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
+                                onChange={toggleSelectAll}
+                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                              />
+                            </div>
+                          </th>
+                          <th onClick={() => handleSort('date')} className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors whitespace-nowrap">
+                            <div className="flex items-center gap-1">
+                              {t('table_date')}
+                              <ArrowUpDown size={12} className="opacity-50" />
+                            </div>
+                          </th>
+                          <th className="px-4 py-3 whitespace-nowrap">{t('table_type')}</th>
+                          <th onClick={() => handleSort('name')} className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors whitespace-nowrap">
+                            <div className="flex items-center gap-1">
+                              {t('table_name')}
+                              <ArrowUpDown size={12} className="opacity-50" />
+                            </div>
+                          </th>
+                          <th className="px-4 py-3 whitespace-nowrap">{t('table_action')}</th>
+                          <th onClick={() => handleSort('amount')} className="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1">
+                              {t('table_amount')}
+                              <ArrowUpDown size={12} className="opacity-50" />
+                            </div>
+                          </th>
+                          <th className="px-4 py-3 whitespace-nowrap">{t('table_status')}</th>
+                          <th className="px-4 py-3 text-center whitespace-nowrap">{t('table_actions')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedRecords.length > 0 ? (
+                          paginatedRecords.map((item) => (
+                            <tr 
+                              key={item.id} 
+                              className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${selectedIds.has(item.id) ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}
+                            >
+                              <td className="px-4 py-3 text-center">
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedIds.has(item.id)}
+                                  onChange={() => toggleSelect(item.id)}
+                                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                              </td>
+                              <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{item.date}</td>
+                              <td className="px-4 py-3">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
+                                  {item.type}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
+                                {item.name}
+                                {item.remarks && (
+                                  <div className="text-xs text-slate-500 dark:text-slate-500 font-normal truncate max-w-[200px]">{item.remarks}</div>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{item.action}</td>
+                              <td className="px-4 py-3 text-right font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                                {formatCurrency(item.amount)}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                  item.status === 'Active' 
+                                    ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' 
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                }`}>
+                                  {item.status}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center justify-center gap-2">
+                                  <button 
+                                    onClick={() => handleEdit(item)}
+                                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDelete(item.id)}
+                                    className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={8} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                              <div className="flex flex-col items-center gap-2">
+                                <ListFilter size={32} className="opacity-50" />
+                                <p>{t('no_records')}</p>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Table Pagination */}
+                  <div className="border-t border-slate-200 dark:border-slate-800 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm bg-slate-50 dark:bg-slate-900/50">
+                     <div className="text-slate-500 dark:text-slate-400">
+                       Showing {Math.min(filteredRecords.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredRecords.length, currentPage * itemsPerPage)} of {filteredRecords.length} entries
+                     </div>
+                     <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <ChevronLeft size={16} />
+                        </button>
+                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                          let pageNum = i + 1;
+                          if (totalPages > 5) {
+                             if (currentPage > 3) pageNum = currentPage - 2 + i;
+                             if (pageNum > totalPages) pageNum = totalPages - 4 + i;
+                          }
+                          
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => setCurrentPage(pageNum)}
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                                currentPage === pageNum 
+                                  ? 'bg-blue-600 text-white' 
+                                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                          className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <ChevronRight size={16} />
+                        </button>
+                     </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {view === 'settings' && (
+              <motion.div variants={itemVariants} className="max-w-2xl mx-auto space-y-6">
+                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                          <Settings size={20} className="text-slate-400" />
+                          Preferences
+                       </h3>
+                    </div>
+                    
+                    <div className="p-6 space-y-6">
+                       {/* Theme Toggle */}
+                       <div className="flex items-center justify-between">
+                          <div>
+                             <p className="font-medium text-slate-900 dark:text-slate-100">{t('setting_theme')}</p>
+                             <p className="text-sm text-slate-500 dark:text-slate-400">{t('setting_theme_desc')}</p>
+                          </div>
+                          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+                             <button
+                               onClick={() => setTheme('light')}
+                               className={`p-2 rounded-md flex items-center gap-2 text-sm transition-all ${
+                                 theme === 'light' ? 'bg-white shadow text-blue-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                               }`}
+                             >
+                                <Sun size={16} />
+                                {t('theme_light')}
+                             </button>
+                             <button
+                               onClick={() => setTheme('dark')}
+                               className={`p-2 rounded-md flex items-center gap-2 text-sm transition-all ${
+                                 theme === 'dark' ? 'bg-slate-700 shadow text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                               }`}
+                             >
+                                <Moon size={16} />
+                                {t('theme_dark')}
+                             </button>
+                          </div>
+                       </div>
+
+                       <div className="h-px bg-slate-100 dark:bg-slate-800"></div>
+
+                       {/* Language Toggle */}
+                       <div className="flex items-center justify-between">
+                          <div>
+                             <p className="font-medium text-slate-900 dark:text-slate-100">{t('setting_language')}</p>
+                             <p className="text-sm text-slate-500 dark:text-slate-400">{t('setting_language_desc')}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Globe size={18} className="text-slate-400" />
+                            <select 
+                               value={language}
+                               onChange={(e) => setLanguage(e.target.value as Language)}
+                               className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                            >
+                               <option value="en">English</option>
+                               <option value="zh">中文 (Chinese)</option>
+                               <option value="ms">Bahasa Melayu</option>
+                            </select>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Data Management */}
+                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                          <Database size={20} className="text-slate-400" />
+                          Data Management
+                       </h3>
+                    </div>
+                    <div className="p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="font-medium text-slate-900 dark:text-slate-100">Load Demo Data</p>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Populate the database with sample records (useful for testing).</p>
+                            </div>
+                            <button
+                              onClick={loadDemoData}
+                              disabled={isDataLoading}
+                              className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+                            >
+                              {isDataLoading ? 'Loading...' : 'Load to DB'}
+                            </button>
+                        </div>
+                    </div>
+                 </div>
+
+                 {/* Account */}
+                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                          <User size={20} className="text-slate-400" />
+                          Account
+                       </h3>
+                    </div>
+                    <div className="p-6 flex items-center justify-between">
+                        <div>
+                             <p className="font-medium text-slate-900 dark:text-slate-100">Currently logged in as</p>
+                             <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
+                        </div>
+                        <button
+                          onClick={signOut}
+                          className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium"
+                        >
+                           <LogOut size={16} />
+                           Sign Out
+                        </button>
+                    </div>
+                 </div>
+              </motion.div>
+            )}
+
+          </motion.div>
+        </div>
+      </main>
+
+      {/* Floating Elements */}
+      <Chatbot records={records} t={t} />
+      <TransactionForm 
+        isOpen={isFormOpen} 
+        onClose={() => setIsFormOpen(false)} 
+        onSave={handleSave}
+        initialData={editingRecord}
+      />
+      
+    </div>
+  );
+}
+
+export default App;
