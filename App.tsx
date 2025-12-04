@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AssetRecord, AssetType } from './types';
 import { INITIAL_DATA, TRANSLATIONS, Language } from './constants';
 import PieChartComponent from './components/PieChartComponent';
+import NetWorthChart from './components/NetWorthChart';
 import TransactionForm from './components/TransactionForm';
 import Chatbot from './components/Chatbot';
 import { downloadCSV } from './utils/csvHelper';
@@ -32,11 +33,25 @@ import {
   Settings,
   Moon,
   Sun,
-  Globe
+  Globe,
+  PieChart as PieChartIcon,
+  LineChart
 } from 'lucide-react';
 
 function App() {
-  const [records, setRecords] = useState<AssetRecord[]>(INITIAL_DATA);
+  // State for Records - Initialized lazily from localStorage if available
+  const [records, setRecords] = useState<AssetRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('my_asset_records');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error("Failed to load records", e);
+    }
+    return INITIAL_DATA;
+  });
+
   const [view, setView] = useState<'dashboard' | 'property' | 'list' | 'settings'>('dashboard');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AssetRecord | null>(null);
@@ -67,8 +82,16 @@ function App() {
   const [propertyRowsPerPage, setPropertyRowsPerPage] = useState(5);
   const [propertySort, setPropertySort] = useState<{ key: keyof AssetRecord; direction: 'asc' | 'desc' } | null>(null);
 
+  // Chart View State
+  const [activeChart, setActiveChart] = useState<'allocation' | 'trend'>('allocation');
+
   // Translation Helper
   const t = (key: string) => TRANSLATIONS[language][key] || key;
+
+  // Persistence Effect
+  useEffect(() => {
+    localStorage.setItem('my_asset_records', JSON.stringify(records));
+  }, [records]);
 
   // Theme Effect
   useEffect(() => {
@@ -489,9 +512,33 @@ function App() {
                 {/* Dashboard Grid Layout - Height adjusted to fit viewport on desktop */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[calc(100vh-14rem)]">
                   
-                  {/* Left Column: Pie Chart (2/3 width) */}
-                  <div className="lg:col-span-2 h-full">
-                     <PieChartComponent data={records} theme={theme} t={t} />
+                  {/* Left Column: Charts (2/3 width) */}
+                  <div className="lg:col-span-2 h-full flex flex-col gap-4">
+                     {/* Toggle for Charts */}
+                     <div className="flex gap-2 p-1 bg-white dark:bg-slate-900 w-fit rounded-lg border border-slate-200 dark:border-slate-800">
+                        <button 
+                          onClick={() => setActiveChart('allocation')}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${activeChart === 'allocation' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                        >
+                          <PieChartIcon size={16} />
+                          {t('chart_view_allocation')}
+                        </button>
+                        <button 
+                          onClick={() => setActiveChart('trend')}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${activeChart === 'trend' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-medium' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                        >
+                          <LineChart size={16} />
+                          {t('chart_view_trend')}
+                        </button>
+                     </div>
+                     
+                     <div className="flex-1 min-h-0">
+                       {activeChart === 'allocation' ? (
+                          <PieChartComponent data={records} theme={theme} t={t} />
+                       ) : (
+                          <NetWorthChart data={records} theme={theme} t={t} />
+                       )}
+                     </div>
                   </div>
 
                   {/* Right Column: Stats (1/3 width, stacked) */}

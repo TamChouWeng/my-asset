@@ -126,7 +126,11 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // Charts & Widgets
     'chart_asset_allocation': 'Asset Allocation',
+    'chart_net_worth_trend': 'Net Worth Trend',
     'chart_breakdown': 'Breakdown',
+    'chart_history': 'History',
+    'chart_view_allocation': 'View Allocation',
+    'chart_view_trend': 'View Trend',
     'chart_no_data': 'No active assets to display for this category',
     'recent_activity': 'Recent Activity',
     
@@ -194,7 +198,11 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'stat_net_worth': '总净值',
 
     'chart_asset_allocation': '资产配置',
+    'chart_net_worth_trend': '净值趋势',
     'chart_breakdown': '细分',
+    'chart_history': '历史',
+    'chart_view_allocation': '查看配置',
+    'chart_view_trend': '查看趋势',
     'chart_no_data': '此类别无活跃资产显示',
     'recent_activity': '近期活动',
     
@@ -258,7 +266,11 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'stat_net_worth': 'Jumlah Nilai Bersih',
 
     'chart_asset_allocation': 'Peruntukan Aset',
+    'chart_net_worth_trend': 'Trend Nilai Bersih',
     'chart_breakdown': 'Pecahan',
+    'chart_history': 'Sejarah',
+    'chart_view_allocation': 'Lihat Peruntukan',
+    'chart_view_trend': 'Lihat Trend',
     'chart_no_data': 'Tiada aset aktif untuk dipaparkan',
     'recent_activity': 'Aktiviti Terkini',
     
