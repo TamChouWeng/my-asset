@@ -27,20 +27,6 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Helper to log user actions
-  const logUserAction = async (userId: string, action: string, details: any = null) => {
-    try {
-      await supabase.from('audit_logs').insert({
-        table_name: 'auth',
-        record_id: userId,
-        action: action,
-        new_data: details
-      });
-    } catch (err) {
-      console.error('Failed to log user action:', err);
-    }
-  };
-
   const fetchProfile = async (userId: string) => {
     try {
       const { data, error } = await supabase
@@ -56,6 +42,7 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
       if (data) {
         setProfile(data as UserProfile);
       } else {
+        // Fallback if trigger failed or pre-existing user (though SQL backfill should fix this)
         const defaultProfile: UserProfile = { id: userId, theme: 'dark', language: 'en' };
         setProfile(defaultProfile);
       }
@@ -77,21 +64,12 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
     });
 
     // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const currentUser = session?.user ?? null;
-      
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      setUser(currentUser);
+      setUser(session?.user ?? null);
       
-      if (currentUser) {
-        fetchProfile(currentUser.id);
-        
-        // Log Login Event
-        if (event === 'SIGNED_IN') {
-           // We check if this is a fresh sign in vs just a token refresh
-           // (Simple implementation: just log it. For prod, might want to debounce)
-           await logUserAction(currentUser.id, 'LOGIN', { email: currentUser.email });
-        }
+      if (session?.user) {
+        fetchProfile(session.user.id);
       } else {
         setProfile(null);
       }
@@ -104,7 +82,6 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (!user || !profile) return;
 
-    const oldProfile = { ...profile };
     // Optimistic update
     setProfile({ ...profile, ...updates });
 
@@ -115,24 +92,13 @@ export const AuthProvider = ({ children }: { children?: React.ReactNode }) => {
         .eq('id', user.id);
 
       if (error) throw error;
-
-      // Log Profile Update
-      await logUserAction(user.id, 'UPDATE_PROFILE', { 
-        changes: updates,
-        previous: oldProfile
-      });
-
     } catch (error) {
       console.error('Error updating profile:', error);
-      // Revert on error
-      setProfile(oldProfile);
+      // Revert on error could be implemented here
     }
   };
 
   const signOut = async () => {
-    if (user) {
-      await logUserAction(user.id, 'LOGOUT');
-    }
     await supabase.auth.signOut();
     setProfile(null);
     setUser(null);
