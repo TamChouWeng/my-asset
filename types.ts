@@ -41,14 +41,3 @@ export interface UserProfile {
   theme: 'light' | 'dark';
   language: 'en' | 'zh' | 'ms';
 }
-
-export interface AuditLog {
-  id: string;
-  table_name: string;
-  record_id: string;
-  action: 'INSERT' | 'UPDATE' | 'DELETE';
-  old_data: any;
-  new_data: any;
-  created_at: string;
-  changed_by: string;
-}
