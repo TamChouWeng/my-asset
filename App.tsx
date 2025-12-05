@@ -39,7 +39,8 @@ import {
   LogOut,
   Database,
   Loader2,
-  User
+  User,
+  Lock
 } from 'lucide-react';
 
 function App() {
@@ -72,6 +73,11 @@ function App() {
   const [propertyPage, setPropertyPage] = useState(1);
   const [propertyRowsPerPage, setPropertyRowsPerPage] = useState(5);
   const [propertySort, setPropertySort] = useState<{ key: keyof AssetRecord; direction: 'asc' | 'desc' } | null>(null);
+
+  // Password Reset State
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Derived state from Profile (with defaults)
   const theme = profile?.theme || 'dark';
@@ -225,6 +231,31 @@ function App() {
        } catch (error) {
          console.error("Error batch deleting:", error);
        }
+    }
+  };
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+    if (newPassword.length < 6) {
+       alert("Password must be at least 6 characters");
+       return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      alert("Password updated successfully");
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      alert("Error updating password: " + error.message);
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -1104,6 +1135,49 @@ function App() {
                     </div>
                  </div>
 
+                 {/* Security Section */}
+                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                          <Lock size={20} className="text-slate-400" />
+                          Security
+                       </h3>
+                    </div>
+                    <div className="p-6">
+                       <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
+                          <div>
+                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">New Password</label>
+                             <input
+                                type="password"
+                                required
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="••••••••"
+                             />
+                          </div>
+                          <div>
+                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Confirm New Password</label>
+                             <input
+                                type="password"
+                                required
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="••••••••"
+                             />
+                          </div>
+                          <button
+                             type="submit"
+                             disabled={passwordLoading}
+                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                          >
+                             {passwordLoading ? 'Updating...' : 'Update Password'}
+                          </button>
+                       </form>
+                    </div>
+                 </div>
+
                  {/* Account */}
                  <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <div className="p-6 border-b border-slate-200 dark:border-slate-800">
@@ -1125,6 +1199,11 @@ function App() {
                            Sign Out
                         </button>
                     </div>
+                 </div>
+
+                 {/* Version Info */}
+                 <div className="text-center pt-4 pb-8 text-slate-400 dark:text-slate-600 text-xs">
+                    Version: Beta 1.0
                  </div>
               </motion.div>
             )}
