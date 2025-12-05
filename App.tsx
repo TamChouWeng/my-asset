@@ -39,8 +39,7 @@ import {
   LogOut,
   Database,
   Loader2,
-  User,
-  Lock
+  User
 } from 'lucide-react';
 
 function App() {
@@ -73,12 +72,6 @@ function App() {
   const [propertyPage, setPropertyPage] = useState(1);
   const [propertyRowsPerPage, setPropertyRowsPerPage] = useState(5);
   const [propertySort, setPropertySort] = useState<{ key: keyof AssetRecord; direction: 'asc' | 'desc' } | null>(null);
-
-  // Password Reset State
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordMsg, setPasswordMsg] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
   // Derived state from Profile (with defaults)
   const theme = profile?.theme || 'dark';
@@ -232,34 +225,6 @@ function App() {
        } catch (error) {
          console.error("Error batch deleting:", error);
        }
-    }
-  };
-
-  const handleUpdatePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordMsg(null);
-    
-    if (newPassword !== confirmPassword) {
-      setPasswordMsg({ type: 'error', text: "Passwords do not match" });
-      return;
-    }
-    
-    if (newPassword.length < 6) {
-       setPasswordMsg({ type: 'error', text: "Password must be at least 6 characters" });
-       return;
-    }
-  
-    setPasswordLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
-      setPasswordMsg({ type: 'success', text: "Password updated successfully" });
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (error: any) {
-      setPasswordMsg({ type: 'error', text: error.message || "Failed to update password" });
-    } finally {
-      setPasswordLoading(false);
     }
   };
 
@@ -1160,62 +1125,6 @@ function App() {
                            Sign Out
                         </button>
                     </div>
-                 </div>
-
-                 {/* Security - Password Reset */}
-                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                          <Lock size={20} className="text-slate-400" />
-                          Security
-                       </h3>
-                    </div>
-                    <div className="p-6">
-                       <form onSubmit={handleUpdatePassword} className="max-w-md space-y-4">
-                          <div>
-                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">New Password</label>
-                             <input 
-                                type="password"
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="••••••••"
-                             />
-                          </div>
-                          <div>
-                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Confirm New Password</label>
-                             <input 
-                                type="password"
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="••••••••"
-                             />
-                          </div>
-                          
-                          {passwordMsg && (
-                            <div className={`text-sm p-2 rounded ${passwordMsg.type === 'success' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'}`}>
-                               {passwordMsg.text}
-                            </div>
-                          )}
-
-                          <button
-                            type="submit"
-                            disabled={!newPassword || passwordLoading}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium flex items-center gap-2"
-                          >
-                             {passwordLoading && <Loader2 size={16} className="animate-spin" />}
-                             Update Password
-                          </button>
-                       </form>
-                    </div>
-                 </div>
-
-                 {/* Version */}
-                 <div className="text-center py-6">
-                   <span className="text-xs font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
-                     Version: Beta 1.0
-                   </span>
                  </div>
               </motion.div>
             )}
