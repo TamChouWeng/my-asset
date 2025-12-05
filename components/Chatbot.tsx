@@ -40,7 +40,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   const initChat = async () => {
     try {
-      const apiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
+      const apiKey = process.env.API_KEY;
       if (!apiKey) {
         throw new Error("API Key not found");
       }
@@ -75,7 +75,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
       `;
 
       const chat = ai.chats.create({
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-2.5-flash',
         config: {
           systemInstruction: systemInstruction,
         },
