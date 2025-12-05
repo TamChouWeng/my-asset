@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { AssetRecord, AssetType } from './types';
+import { AssetRecord, AssetType, AuditLog } from './types';
 import { TRANSLATIONS, Language } from './constants';
 import PieChartComponent from './components/PieChartComponent';
 import TransactionForm from './components/TransactionForm';
@@ -40,7 +40,11 @@ import {
   Database,
   Loader2,
   User,
-  Lock
+  Lock,
+  Activity,
+  FileJson,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 function App() {
@@ -79,6 +83,11 @@ function App() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
 
+  // Audit Logs State
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
   // Derived state from Profile (with defaults)
   const theme = profile?.theme || 'dark';
   const language = (profile?.language as Language) || 'en';
@@ -92,6 +101,13 @@ function App() {
       fetchRecords();
     }
   }, [user]);
+
+  // Fetch Audit Logs when entering Settings view
+  useEffect(() => {
+    if (view === 'settings' && user) {
+      fetchAuditLogs();
+    }
+  }, [view, user]);
 
   const fetchRecords = async () => {
     setIsDataLoading(true);
@@ -126,6 +142,35 @@ function App() {
       console.error('Error fetching records:', error);
     } finally {
       setIsDataLoading(false);
+    }
+  };
+
+  const fetchAuditLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      // This will fail if the table doesn't exist yet, so we catch errors gracefully
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        // If 404 or table not found, just ignore
+        if (error.code === '42P01') {
+          console.warn("Audit logs table not found. Please run the SQL script.");
+        } else {
+          throw error;
+        }
+      }
+      
+      if (data) {
+        setAuditLogs(data as AuditLog[]);
+      }
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+    } finally {
+      setLoadingLogs(false);
     }
   };
 
@@ -1175,6 +1220,94 @@ function App() {
                              {passwordLoading ? 'Updating...' : 'Update Password'}
                           </button>
                        </form>
+                    </div>
+                 </div>
+
+                 {/* Audit Logs Section (Mature Feature) */}
+                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                          <Activity size={20} className="text-slate-400" />
+                          System Activity
+                       </h3>
+                    </div>
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {loadingLogs ? (
+                        <div className="p-8 flex justify-center text-slate-500">
+                          <Loader2 className="animate-spin" />
+                        </div>
+                      ) : auditLogs.length === 0 ? (
+                        <div className="p-8 text-center text-sm text-slate-500">
+                           No activity logs found.
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {auditLogs.map((log) => (
+                            <div key={log.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-sm">
+                              <div className="flex justify-between items-start cursor-pointer" onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}>
+                                 <div className="flex gap-3">
+                                   <div className={`mt-0.5 p-1.5 rounded-md ${
+                                     log.action === 'INSERT' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20' :
+                                     log.action === 'DELETE' ? 'bg-red-100 text-red-600 dark:bg-red-500/20' :
+                                     'bg-blue-100 text-blue-600 dark:bg-blue-500/20'
+                                   }`}>
+                                     {log.action === 'INSERT' && <Plus size={14} />}
+                                     {log.action === 'DELETE' && <Trash2 size={14} />}
+                                     {log.action === 'UPDATE' && <Edit2 size={14} />}
+                                   </div>
+                                   <div>
+                                      <p className="font-medium text-slate-900 dark:text-slate-100">
+                                        {log.action} on <span className="font-mono text-xs opacity-75">{log.table_name}</span>
+                                      </p>
+                                      <p className="text-xs text-slate-500 mt-0.5">
+                                        {new Date(log.created_at).toLocaleString()}
+                                      </p>
+                                   </div>
+                                 </div>
+                                 <div className="text-slate-400">
+                                   {expandedLogId === log.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                 </div>
+                              </div>
+                              
+                              {/* Expanded Diff View */}
+                              {expandedLogId === log.id && (
+                                <motion.div 
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  className="mt-3 pl-11 overflow-hidden"
+                                >
+                                  <div className="bg-slate-100 dark:bg-slate-950 rounded p-3 font-mono text-xs overflow-x-auto">
+                                    {log.action === 'UPDATE' && (
+                                      <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                          <span className="block text-red-500 mb-1 font-bold">Old Data:</span>
+                                          <pre className="text-slate-600 dark:text-slate-400">{JSON.stringify(log.old_data, null, 2)}</pre>
+                                        </div>
+                                        <div>
+                                          <span className="block text-emerald-500 mb-1 font-bold">New Data:</span>
+                                          <pre className="text-slate-600 dark:text-slate-400">{JSON.stringify(log.new_data, null, 2)}</pre>
+                                        </div>
+                                      </div>
+                                    )}
+                                    {log.action === 'INSERT' && (
+                                       <div>
+                                          <span className="block text-emerald-500 mb-1 font-bold">New Record:</span>
+                                          <pre className="text-slate-600 dark:text-slate-400">{JSON.stringify(log.new_data, null, 2)}</pre>
+                                       </div>
+                                    )}
+                                    {log.action === 'DELETE' && (
+                                       <div>
+                                          <span className="block text-red-500 mb-1 font-bold">Deleted Record:</span>
+                                          <pre className="text-slate-600 dark:text-slate-400">{JSON.stringify(log.old_data, null, 2)}</pre>
+                                       </div>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                  </div>
 
