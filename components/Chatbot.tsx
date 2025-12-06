@@ -40,11 +40,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   const initChat = async () => {
     try {
-      const apiKey = process.env.API_KEY;
-      if (!apiKey) {
-        throw new Error("API Key not found");
-      }
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       // Prepare simplified data for context to save tokens and focus on content
       const simplifiedRecords = records.map(r => ({

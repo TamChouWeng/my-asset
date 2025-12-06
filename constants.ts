@@ -100,12 +100,14 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // Navigation
     'nav_dashboard': 'Dashboard',
     'nav_property': 'Property',
+    'nav_fixed_deposit': 'Fixed Deposit',
     'nav_records': 'Records List',
     'nav_settings': 'Settings',
     
     // Header/Titles
     'title_dashboard': 'Overview',
     'title_property': 'Property Analysis',
+    'title_fixed_deposit': 'Fixed Deposit Portfolio',
     'title_records': 'All Transactions',
     'title_settings': 'Settings',
     'subtitle_dashboard': 'Manage your wealth effectively',
@@ -148,6 +150,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'table_action': 'Action',
     'table_amount': 'Amount',
     'table_status': 'Status',
+    'table_maturity': 'Maturity Date',
     'table_actions': 'Actions',
     'search_placeholder': 'Search by name or remarks...',
     'all_types': 'All Types',
@@ -172,11 +175,13 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   zh: {
     'nav_dashboard': '仪表板',
     'nav_property': '房产',
+    'nav_fixed_deposit': '定期存款',
     'nav_records': '记录列表',
     'nav_settings': '设置',
     
     'title_dashboard': '概览',
     'title_property': '房产分析',
+    'title_fixed_deposit': '定期存款组合',
     'title_records': '所有交易',
     'title_settings': '设置',
     'subtitle_dashboard': '有效管理您的财富',
@@ -214,6 +219,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'table_action': '操作',
     'table_amount': '金额',
     'table_status': '状态',
+    'table_maturity': '到期日',
     'table_actions': '操作',
     'search_placeholder': '按名称或备注搜索...',
     'all_types': '所有类型',
@@ -236,11 +242,13 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   ms: {
     'nav_dashboard': 'Papan Pemuka',
     'nav_property': 'Hartanah',
+    'nav_fixed_deposit': 'Simpanan Tetap',
     'nav_records': 'Senarai Rekod',
     'nav_settings': 'Tetapan',
     
     'title_dashboard': 'Gambaran Keseluruhan',
     'title_property': 'Analisis Hartanah',
+    'title_fixed_deposit': 'Portfolio Simpanan Tetap',
     'title_records': 'Semua Transaksi',
     'title_settings': 'Tetapan',
     'subtitle_dashboard': 'Urus kekayaan anda dengan berkesan',
@@ -278,6 +286,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'table_action': 'Tindakan',
     'table_amount': 'Jumlah',
     'table_status': 'Status',
+    'table_maturity': 'Tarikh Matang',
     'table_actions': 'Tindakan',
     'search_placeholder': 'Cari mengikut nama atau nota...',
     'all_types': 'Semua Jenis',

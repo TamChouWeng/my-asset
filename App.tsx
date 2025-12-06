@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { AssetRecord, AssetType } from './types';
+import { AssetRecord, AssetType, AssetStatus } from './types';
 import { TRANSLATIONS, Language } from './constants';
 import PieChartComponent from './components/PieChartComponent';
 import TransactionForm from './components/TransactionForm';
@@ -43,7 +43,8 @@ import {
   Lock,
   FileJson,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Landmark
 } from 'lucide-react';
 
 function App() {
@@ -51,7 +52,7 @@ function App() {
   const [records, setRecords] = useState<AssetRecord[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(false);
 
-  const [view, setView] = useState<'dashboard' | 'property' | 'list' | 'settings'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'property' | 'fixed-deposit' | 'list' | 'settings'>('dashboard');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AssetRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -77,6 +78,11 @@ function App() {
   const [propertyRowsPerPage, setPropertyRowsPerPage] = useState(5);
   const [propertySort, setPropertySort] = useState<{ key: keyof AssetRecord; direction: 'asc' | 'desc' } | null>(null);
 
+  // Fixed Deposit Table State
+  const [fdPage, setFdPage] = useState(1);
+  const [fdRowsPerPage, setFdRowsPerPage] = useState(10);
+  const [fdSort, setFdSort] = useState<{ key: keyof AssetRecord; direction: 'asc' | 'desc' } | null>(null);
+
   // Password Reset State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -97,6 +103,36 @@ function App() {
       fetchRecords();
     }
   }, [user]);
+
+  const checkMaturity = async (currentRecords: AssetRecord[]) => {
+    // Get today's date in local time to match YYYY-MM-DD format
+    const today = new Date().toLocaleDateString('en-CA');
+    const updates: string[] = [];
+    
+    currentRecords.forEach(r => {
+      // Check for Fixed Deposit, Active status, and maturity date passed or is today
+      if (r.type === AssetType.FixedDeposit && r.status === AssetStatus.Active && r.maturityDate && r.maturityDate <= today) {
+        updates.push(r.id);
+      }
+    });
+
+    if (updates.length > 0) {
+      console.log("Auto-maturing FDs:", updates);
+      
+      // Optimistic update to reflect in UI immediately
+      setRecords(prev => prev.map(r => 
+        updates.includes(r.id) ? { ...r, status: AssetStatus.Mature } : r
+      ));
+
+      // Background update to Supabase
+      const { error } = await supabase
+        .from('assets')
+        .update({ status: 'Mature' })
+        .in('id', updates);
+        
+      if (error) console.error("Error auto-maturing:", error);
+    }
+  };
 
   const fetchRecords = async () => {
     setIsDataLoading(true);
@@ -126,6 +162,9 @@ function App() {
           remarks: item.remarks
         }));
         setRecords(mappedData);
+        
+        // Check for maturity after fetching
+        checkMaturity(mappedData);
       }
     } catch (error) {
       console.error('Error fetching records:', error);
@@ -169,7 +208,11 @@ function App() {
         if (error) throw error;
         
         // Optimistic Update
-        setRecords(prev => prev.map(r => r.id === editingRecord.id ? { ...data, id: editingRecord.id } : r));
+        const updatedRecord = { ...data, id: editingRecord.id };
+        const newRecords = records.map(r => r.id === editingRecord.id ? updatedRecord : r);
+        setRecords(newRecords);
+        checkMaturity(newRecords); // Re-check in case user edited date/status
+
       } else {
         const { data: inserted, error } = await supabase
           .from('assets')
@@ -196,7 +239,9 @@ function App() {
               status: newRecord.status,
               remarks: newRecord.remarks
            };
-           setRecords(prev => [mappedNew, ...prev]);
+           const newRecords = [mappedNew, ...records];
+           setRecords(newRecords);
+           checkMaturity(newRecords); // Re-check newly added record
         }
       }
       setEditingRecord(null);
@@ -296,10 +341,11 @@ function App() {
     }
   }, [theme]);
 
-  // Reset Property Pagination on Filter Change
+  // Reset Property & FD Pagination on View Change
   useEffect(() => {
     setPropertyPage(1);
-  }, [selectedProperty]);
+    setFdPage(1);
+  }, [view, selectedProperty]);
 
   // Computed Metrics
   const totalValue = useMemo(() => {
@@ -357,6 +403,33 @@ function App() {
       records: propertyRecords
     };
   }, [records, selectedProperty]);
+
+  // Fixed Deposit Data Logic
+  const fdRecords = useMemo(() => {
+    let fds = records.filter(r => r.type === AssetType.FixedDeposit);
+    
+    // Sorting for FD table
+    if (fdSort) {
+      fds.sort((a, b) => {
+        const aVal = a[fdSort.key] ?? '';
+        const bVal = b[fdSort.key] ?? '';
+        
+        if (aVal < bVal) return fdSort.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return fdSort.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    } else {
+      // Default sort by date desc
+      fds.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    return fds;
+  }, [records, fdSort]);
+
+  const fdTotalPages = Math.ceil(fdRecords.length / fdRowsPerPage);
+  const paginatedFdRecords = useMemo(() => {
+    const start = (fdPage - 1) * fdRowsPerPage;
+    return fdRecords.slice(start, start + fdRowsPerPage);
+  }, [fdRecords, fdPage, fdRowsPerPage]);
 
   const filteredRecords = useMemo(() => {
     return records
@@ -438,6 +511,14 @@ function App() {
       direction = 'desc';
     }
     setPropertySort({ key, direction });
+  };
+
+  const handleFdSort = (key: keyof AssetRecord) => {
+    let direction: 'asc' | 'desc' = 'asc';
+    if (fdSort && fdSort.key === key && fdSort.direction === 'asc') {
+      direction = 'desc';
+    }
+    setFdSort({ key, direction });
   };
 
   const toggleSelectAll = () => {
@@ -574,6 +655,13 @@ function App() {
               {t('nav_property')}
             </button>
             <button 
+              onClick={() => setView('fixed-deposit')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'fixed-deposit' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
+            >
+              <Landmark size={20} />
+              {t('nav_fixed_deposit')}
+            </button>
+            <button 
               onClick={() => setView('list')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'list' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
             >
@@ -656,6 +744,7 @@ function App() {
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                   {view === 'dashboard' && t('title_dashboard')}
                   {view === 'property' && t('title_property')}
+                  {view === 'fixed-deposit' && t('title_fixed_deposit')}
                   {view === 'list' && t('title_records')}
                   {view === 'settings' && t('title_settings')}
                 </h2>
@@ -892,6 +981,122 @@ function App() {
                         </div>
                       </div>
                     </>
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
+
+            {view === 'fixed-deposit' && (
+              <motion.div variants={itemVariants} className="space-y-6">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+                  <div className="flex items-center justify-between mb-6">
+                     <div className="flex items-center gap-3">
+                        <div className="p-2 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                           <Landmark size={20} />
+                        </div>
+                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('title_fixed_deposit')}</h3>
+                     </div>
+                     <div className="flex items-center gap-2 text-xs">
+                        <select 
+                           value={fdRowsPerPage} 
+                           onChange={(e) => { setFdRowsPerPage(Number(e.target.value)); setFdPage(1); }}
+                           className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 focus:outline-none"
+                        >
+                           <option value={10}>10 / page</option>
+                           <option value={20}>20 / page</option>
+                           <option value={50}>50 / page</option>
+                        </select>
+                     </div>
+                  </div>
+
+                  {fdRecords.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500 dark:text-slate-400 flex flex-col items-center">
+                       <Landmark size={48} className="opacity-20 mb-4" />
+                       <p>No Fixed Deposit records found.</p>
+                       <p className="text-sm mt-2">Add a new record with Type "Fixed Deposit" to see it here.</p>
+                    </div>
+                  ) : (
+                    <div className="bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-col">
+                        <div className="overflow-x-auto w-full">
+                            <table className="w-full text-sm text-left min-w-[700px]">
+                              <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
+                                <tr>
+                                  <th className="px-4 py-3 whitespace-nowrap">{t('table_date')}</th>
+                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('name')}>
+                                     <div className="flex items-center gap-1">
+                                       {t('table_name')}
+                                       <ArrowUpDown size={12} className="opacity-50" />
+                                     </div>
+                                  </th>
+                                  <th className="px-4 py-3 text-right whitespace-nowrap">{t('table_amount')}</th>
+                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('status')}>
+                                     <div className="flex items-center gap-1">
+                                       {t('table_status')}
+                                       <ArrowUpDown size={12} className="opacity-50" />
+                                     </div>
+                                  </th>
+                                  <th className="px-4 py-3 whitespace-nowrap">{t('table_maturity')}</th>
+                                  <th className="px-4 py-3 whitespace-nowrap text-center">{t('table_actions')}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {paginatedFdRecords.map((item) => (
+                                  <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{item.date}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{item.name}</td>
+                                    <td className="px-4 py-3 text-right font-medium text-slate-900 dark:text-slate-100">{formatCurrency(item.amount)}</td>
+                                    <td className="px-4 py-3">
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                        item.status === 'Active' 
+                                          ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' 
+                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                      }`}>
+                                        {item.status}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                                       {item.maturityDate || '-'}
+                                    </td>
+                                    <td className="px-4 py-3">
+                                       <div className="flex items-center justify-center gap-2">
+                                          <button 
+                                             onClick={() => handleEdit(item)}
+                                             className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                                             title="Edit"
+                                          >
+                                             <Edit2 size={16} />
+                                          </button>
+                                       </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                        </div>
+                        
+                        {/* Pagination Controls */}
+                        {fdTotalPages > 1 && (
+                          <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm">
+                            <button 
+                              onClick={() => setFdPage(p => Math.max(1, p - 1))}
+                              disabled={fdPage === 1}
+                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <ChevronLeft size={16} />
+                            </button>
+                            <span className="text-slate-500 dark:text-slate-400">
+                              Page {fdPage} of {fdTotalPages}
+                            </span>
+                            <button 
+                              onClick={() => setFdPage(p => Math.min(fdTotalPages, p + 1))}
+                              disabled={fdPage === fdTotalPages}
+                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <ChevronRight size={16} />
+                            </button>
+                          </div>
+                        )}
+                    </div>
                   )}
                 </motion.div>
               </motion.div>
