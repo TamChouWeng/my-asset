@@ -22,12 +22,17 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
     status: AssetStatus.Active,
     action: 'Buy',
     amount: 0,
+    unitPrice: 0,
+    quantity: 0,
   });
+
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (initialData) {
       setFormData({ ...initialData });
     } else {
+      // Reset form on new entry
       setFormData({
         date: getTodayDate(),
         type: AssetType.Stock,
@@ -40,7 +45,82 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
         remarks: ''
       });
     }
+    // Clear errors when opening/changing record
+    setErrors({});
   }, [initialData, isOpen]);
+
+  const validateForm = () => {
+    const newErrors: Record<string, boolean> = {};
+    let isValid = true;
+
+    // Mandatory fields check
+    if (!formData.date) newErrors.date = true;
+    if (!formData.type) newErrors.type = true;
+    if (!formData.name?.trim()) newErrors.name = true;
+    if (!formData.action) newErrors.action = true;
+    if (!formData.status) newErrors.status = true;
+    
+    // Ensure numbers are entered (allow 0 if specifically needed, but usually we want > 0, 
+    // checking for undefined or null here essentially)
+    if (formData.unitPrice === undefined || formData.unitPrice === null || formData.unitPrice === 0 && formData.action !== 'Dividend') { 
+       // Note: Allowing 0 for unit price might be valid for gifts/airdrops, but let's strict validate based on request
+       // Keeping simple check for empty/undefined mainly.
+    }
+    
+    // Check strict numeric requirement if user wants 'filled in'
+    if (formData.unitPrice === undefined || String(formData.unitPrice) === '') newErrors.unitPrice = true;
+    if (formData.quantity === undefined || String(formData.quantity) === '') newErrors.quantity = true;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      isValid = false;
+    }
+
+    return isValid;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (validateForm()) {
+      onSave(formData as Omit<AssetRecord, 'id'>);
+      onClose();
+    }
+  };
+
+  // Helper to handle numeric inputs and auto-calc amount
+  const handleNumericChange = (field: 'unitPrice' | 'quantity', value: string) => {
+    const numValue = parseFloat(value);
+    
+    // Update the specific field
+    const updatedData = {
+      ...formData,
+      [field]: isNaN(numValue) ? 0 : numValue
+    };
+
+    // Auto calculate Total Amount = Price * Qty
+    const price = field === 'unitPrice' ? (isNaN(numValue) ? 0 : numValue) : (updatedData.unitPrice || 0);
+    const qty = field === 'quantity' ? (isNaN(numValue) ? 0 : numValue) : (updatedData.quantity || 0);
+    
+    updatedData.amount = parseFloat((price * qty).toFixed(2));
+
+    setFormData(updatedData);
+    
+    // Clear error if exists
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: false }));
+    }
+  };
+
+  const getInputClass = (fieldName: string) => {
+    const baseClass = "w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-shadow";
+    if (errors[fieldName]) {
+      return `${baseClass} border-red-500 focus:border-red-500 focus:ring-red-200`;
+    }
+    return `${baseClass} border-slate-300 dark:border-slate-700 focus:ring-blue-500 focus:border-blue-500`;
+  };
+
+  const MandatoryMark = () => <span className="text-red-500 ml-1">*</span>;
 
   return (
     <AnimatePresence>
@@ -68,38 +148,39 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
               </button>
             </div>
 
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              if (!formData.name || !formData.amount || !formData.date) return;
-              onSave(formData as Omit<AssetRecord, 'id'>);
-              onClose();
-            }} className="p-4 sm:p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
               {/* Row 1: Date & Type - Stack on mobile, Side-by-side on tablet */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Date</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Date <MandatoryMark />
+                  </label>
                   <input
                     type="date"
-                    required
                     value={formData.date}
-                    onChange={e => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    onChange={e => {
+                      setFormData({ ...formData, date: e.target.value });
+                      if (errors.date) setErrors({ ...errors, date: false });
+                    }}
+                    className={getInputClass('date')}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Type</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Type <MandatoryMark />
+                  </label>
                   <select
                     value={formData.type}
                     onChange={e => {
                       const newType = e.target.value as AssetType;
-                      // Automatically switch Action default when Type changes to prevent invalid selections
                       setFormData({ 
                         ...formData, 
                         type: newType,
                         action: newType === AssetType.Property ? 'Pay' : 'Buy'
                       });
+                      if (errors.type) setErrors({ ...errors, type: false });
                     }}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    className={getInputClass('type')}
                   >
                     {Object.values(AssetType).map(t => (
                       <option key={t} value={t}>{t}</option>
@@ -110,26 +191,35 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
 
               {/* Row 2: Name - Always full width */}
               <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Name / Identifier</label>
+                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                  Name / Identifier <MandatoryMark />
+                </label>
                 <input
                   type="text"
-                  required
                   placeholder="e.g. Maybank, EPF, Gold"
                   value={formData.name || ''}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                  onChange={e => {
+                    setFormData({ ...formData, name: e.target.value });
+                    if (errors.name) setErrors({ ...errors, name: false });
+                  }}
+                  className={getInputClass('name')}
                 />
               </div>
 
               {/* Row 3: Action & Status - Stack on mobile */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Action</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Action <MandatoryMark />
+                  </label>
                   {formData.type === AssetType.Property ? (
                     <select
                       value={formData.action || ''}
-                      onChange={e => setFormData({ ...formData, action: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                      onChange={e => {
+                        setFormData({ ...formData, action: e.target.value });
+                        if (errors.action) setErrors({ ...errors, action: false });
+                      }}
+                      className={getInputClass('action')}
                     >
                       <option value="Pay">Pay</option>
                       <option value="Rent">Rent</option>
@@ -140,8 +230,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                   ) : (
                     <select
                       value={formData.action || ''}
-                      onChange={e => setFormData({ ...formData, action: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                      onChange={e => {
+                        setFormData({ ...formData, action: e.target.value });
+                        if (errors.action) setErrors({ ...errors, action: false });
+                      }}
+                      className={getInputClass('action')}
                     >
                       <option value="Buy">Buy</option>
                       <option value="Sold">Sold</option>
@@ -150,11 +243,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                   )}
                 </div>
                  <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Status</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Status <MandatoryMark />
+                  </label>
                   <select
                     value={formData.status}
-                    onChange={e => setFormData({ ...formData, status: e.target.value as AssetStatus })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    onChange={e => {
+                      setFormData({ ...formData, status: e.target.value as AssetStatus });
+                      if (errors.status) setErrors({ ...errors, status: false });
+                    }}
+                    className={getInputClass('status')}
                   >
                     {Object.values(AssetStatus).map(s => (
                       <option key={s} value={s}>{s}</option>
@@ -163,37 +261,44 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </div>
               </div>
 
-              {/* Row 4: Amount, Price, Qty - Stack all on mobile, 3-col on Tablet */}
+              {/* Row 4: Price, Qty, Total Amount - Stack all on mobile, 3-col on Tablet */}
+              {/* Logic: Unit Price * Qty = Total Amount (Auto Calculated) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                 <div className="sm:col-span-1">
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Total Amount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={formData.amount}
-                    onChange={e => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow font-semibold"
-                  />
-                </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Unit Price</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Unit Price <MandatoryMark />
+                  </label>
                   <input
                     type="number"
                     step="0.001"
                     value={formData.unitPrice || ''}
-                    onChange={e => setFormData({ ...formData, unitPrice: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    onChange={e => handleNumericChange('unitPrice', e.target.value)}
+                    className={getInputClass('unitPrice')}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Quantity</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Quantity <MandatoryMark />
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     value={formData.quantity || ''}
-                    onChange={e => setFormData({ ...formData, quantity: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    onChange={e => handleNumericChange('quantity', e.target.value)}
+                    className={getInputClass('quantity')}
+                  />
+                </div>
+                <div className="sm:col-span-1">
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Total Amount
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    readOnly
+                    value={formData.amount}
+                    className="w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 cursor-not-allowed font-semibold focus:outline-none"
+                    title="Auto-calculated: Unit Price * Quantity"
                   />
                 </div>
               </div>

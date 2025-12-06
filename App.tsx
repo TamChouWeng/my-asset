@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { AssetRecord, AssetType, AuditLog } from './types';
+import { AssetRecord, AssetType } from './types';
 import { TRANSLATIONS, Language } from './constants';
 import PieChartComponent from './components/PieChartComponent';
 import TransactionForm from './components/TransactionForm';
@@ -41,7 +41,6 @@ import {
   Loader2,
   User,
   Lock,
-  Activity,
   FileJson,
   ChevronDown,
   ChevronUp
@@ -79,14 +78,11 @@ function App() {
   const [propertySort, setPropertySort] = useState<{ key: keyof AssetRecord; direction: 'asc' | 'desc' } | null>(null);
 
   // Password Reset State
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
-
-  // Audit Logs State
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [loadingLogs, setLoadingLogs] = useState(false);
-  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
   // Derived state from Profile (with defaults)
   const theme = profile?.theme || 'dark';
@@ -101,13 +97,6 @@ function App() {
       fetchRecords();
     }
   }, [user]);
-
-  // Fetch Audit Logs when entering Settings view
-  useEffect(() => {
-    if (view === 'settings' && user) {
-      fetchAuditLogs();
-    }
-  }, [view, user]);
 
   const fetchRecords = async () => {
     setIsDataLoading(true);
@@ -142,35 +131,6 @@ function App() {
       console.error('Error fetching records:', error);
     } finally {
       setIsDataLoading(false);
-    }
-  };
-
-  const fetchAuditLogs = async () => {
-    setLoadingLogs(true);
-    try {
-      // This will fail if the table doesn't exist yet, so we catch errors gracefully
-      const { data, error } = await supabase
-        .from('audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (error) {
-        // If 404 or table not found, just ignore
-        if (error.code === '42P01') {
-          console.warn("Audit logs table not found. Please run the SQL script.");
-        } else {
-          throw error;
-        }
-      }
-      
-      if (data) {
-        setAuditLogs(data as AuditLog[]);
-      }
-    } catch (error) {
-      console.error('Error fetching audit logs:', error);
-    } finally {
-      setLoadingLogs(false);
     }
   };
 
@@ -281,8 +241,14 @@ function App() {
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user || !user.email) return;
+
+    if (!currentPassword) {
+      alert("Please enter your current password.");
+      return;
+    }
     if (newPassword !== confirmPassword) {
-      alert("Passwords do not match");
+      alert("New passwords do not match");
       return;
     }
     if (newPassword.length < 6) {
@@ -292,13 +258,27 @@ function App() {
 
     setPasswordLoading(true);
     try {
+      // 1. Verify Current Password via SignIn
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword
+      });
+
+      if (signInError) {
+        throw new Error("Incorrect current password.");
+      }
+
+      // 2. Update to new Password
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
+      
       alert("Password updated successfully");
+      setIsPasswordModalOpen(false);
       setNewPassword('');
       setConfirmPassword('');
+      setCurrentPassword('');
     } catch (error: any) {
-      alert("Error updating password: " + error.message);
+      alert("Error: " + error.message);
     } finally {
       setPasswordLoading(false);
     }
@@ -1189,125 +1169,18 @@ function App() {
                        </h3>
                     </div>
                     <div className="p-6">
-                       <form onSubmit={handleUpdatePassword} className="space-y-4 max-w-md">
-                          <div>
-                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">New Password</label>
-                             <input
-                                type="password"
-                                required
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="••••••••"
-                             />
-                          </div>
-                          <div>
-                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Confirm New Password</label>
-                             <input
-                                type="password"
-                                required
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="••••••••"
-                             />
-                          </div>
-                          <button
-                             type="submit"
-                             disabled={passwordLoading}
-                             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
-                          >
-                             {passwordLoading ? 'Updating...' : 'Update Password'}
-                          </button>
-                       </form>
-                    </div>
-                 </div>
-
-                 {/* Audit Logs Section (Mature Feature) */}
-                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                          <Activity size={20} className="text-slate-400" />
-                          System Activity
-                       </h3>
-                    </div>
-                    <div className="max-h-[400px] overflow-y-auto">
-                      {loadingLogs ? (
-                        <div className="p-8 flex justify-center text-slate-500">
-                          <Loader2 className="animate-spin" />
+                        <div className="flex items-center justify-between">
+                           <div>
+                              <p className="font-medium text-slate-900 dark:text-slate-100">Password</p>
+                              <p className="text-sm text-slate-500 dark:text-slate-400">Change your account password</p>
+                           </div>
+                           <button
+                             onClick={() => setIsPasswordModalOpen(true)}
+                             className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm font-medium"
+                           >
+                              Change Password
+                           </button>
                         </div>
-                      ) : auditLogs.length === 0 ? (
-                        <div className="p-8 text-center text-sm text-slate-500">
-                           No activity logs found.
-                        </div>
-                      ) : (
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {auditLogs.map((log) => (
-                            <div key={log.id} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-sm">
-                              <div className="flex justify-between items-start cursor-pointer" onClick={() => setExpandedLogId(expandedLogId === log.id ? null : log.id)}>
-                                 <div className="flex gap-3">
-                                   <div className={`mt-0.5 p-1.5 rounded-md ${
-                                     log.action === 'INSERT' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20' :
-                                     log.action === 'DELETE' ? 'bg-red-100 text-red-600 dark:bg-red-500/20' :
-                                     'bg-blue-100 text-blue-600 dark:bg-blue-500/20'
-                                   }`}>
-                                     {log.action === 'INSERT' && <Plus size={14} />}
-                                     {log.action === 'DELETE' && <Trash2 size={14} />}
-                                     {log.action === 'UPDATE' && <Edit2 size={14} />}
-                                   </div>
-                                   <div>
-                                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                                        {log.action} on <span className="font-mono text-xs opacity-75">{log.table_name}</span>
-                                      </p>
-                                      <p className="text-xs text-slate-500 mt-0.5">
-                                        {new Date(log.created_at).toLocaleString()}
-                                      </p>
-                                   </div>
-                                 </div>
-                                 <div className="text-slate-400">
-                                   {expandedLogId === log.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                                 </div>
-                              </div>
-                              
-                              {/* Expanded Diff View */}
-                              {expandedLogId === log.id && (
-                                <motion.div 
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: 'auto', opacity: 1 }}
-                                  className="mt-3 pl-11 overflow-hidden"
-                                >
-                                  <div className="bg-slate-100 dark:bg-slate-950 rounded p-3 font-mono text-xs overflow-x-auto">
-                                    {log.action === 'UPDATE' && (
-                                      <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                          <span className="block text-red-500 mb-1 font-bold">Old Data:</span>
-                                          <pre className="text-slate-600 dark:text-slate-400">{JSON.stringify(log.old_data, null, 2)}</pre>
-                                        </div>
-                                        <div>
-                                          <span className="block text-emerald-500 mb-1 font-bold">New Data:</span>
-                                          <pre className="text-slate-600 dark:text-slate-400">{JSON.stringify(log.new_data, null, 2)}</pre>
-                                        </div>
-                                      </div>
-                                    )}
-                                    {log.action === 'INSERT' && (
-                                       <div>
-                                          <span className="block text-emerald-500 mb-1 font-bold">New Record:</span>
-                                          <pre className="text-slate-600 dark:text-slate-400">{JSON.stringify(log.new_data, null, 2)}</pre>
-                                       </div>
-                                    )}
-                                    {log.action === 'DELETE' && (
-                                       <div>
-                                          <span className="block text-red-500 mb-1 font-bold">Deleted Record:</span>
-                                          <pre className="text-slate-600 dark:text-slate-400">{JSON.stringify(log.old_data, null, 2)}</pre>
-                                       </div>
-                                    )}
-                                  </div>
-                                </motion.div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                  </div>
 
@@ -1353,6 +1226,79 @@ function App() {
         onSave={handleSave}
         initialData={editingRecord}
       />
+
+      {/* Password Change Modal */}
+      <AnimatePresence>
+        {isPasswordModalOpen && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+             <motion.div 
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               onClick={() => setIsPasswordModalOpen(false)}
+               className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+             />
+             <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-800 relative z-10"
+             >
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Change Password</h3>
+                  <button onClick={() => setIsPasswordModalOpen(false)} className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"><X size={24} /></button>
+                </div>
+                
+                <form onSubmit={handleUpdatePassword} className="space-y-4">
+                   <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Current Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="••••••••"
+                      />
+                   </div>
+                   <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">New Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="••••••••"
+                      />
+                   </div>
+                   <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Confirm New Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="••••••••"
+                      />
+                   </div>
+                   
+                   <div className="flex justify-end pt-2">
+                     <button
+                        type="submit"
+                        disabled={passwordLoading}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                     >
+                        {passwordLoading && <Loader2 size={16} className="animate-spin" />}
+                        {passwordLoading ? 'Verifying...' : 'Update Password'}
+                     </button>
+                   </div>
+                </form>
+             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       
     </div>
   );
