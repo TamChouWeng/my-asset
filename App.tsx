@@ -185,7 +185,7 @@ function App() {
     }
 
     try {
-      // Map back to snake_case for DB
+      // Map back to snake_case for DB and sanitize data
       const dbPayload = {
         user_id: user.id,
         date: data.date,
@@ -196,9 +196,9 @@ function App() {
         quantity: data.quantity,
         amount: data.amount,
         fee: data.fee,
-        interest_rate: data.interestRate,
-        interest_dividend: data.interestDividend,
-        maturity_date: data.maturityDate,
+        interest_rate: isNaN(Number(data.interestRate)) ? null : data.interestRate,
+        interest_dividend: isNaN(Number(data.interestDividend)) ? null : data.interestDividend,
+        maturity_date: data.maturityDate || null,
         status: data.status,
         remarks: data.remarks
       };

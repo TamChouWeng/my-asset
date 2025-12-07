@@ -195,7 +195,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                       setFormData({ ...formData, date: e.target.value });
                       if (errors.date) setErrors({ ...errors, date: false });
                     }}
-                    className={`${getInputClass('date')} block w-full min-w-full`}
+                    onKeyDown={(e) => e.preventDefault()} // Prevent typing
+                    onClick={(e) => e.currentTarget.showPicker()} // Open picker on click
+                    className={`${getInputClass('date')} block w-full min-w-full cursor-pointer`}
                     style={{ width: '100%', display: 'block' }}
                   />
                 </div>
@@ -366,7 +368,10 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                           type="number"
                           step="0.01"
                           value={formData.interestRate || ''}
-                          onChange={e => setFormData({ ...formData, interestRate: parseFloat(e.target.value) })}
+                          onChange={e => {
+                             const val = parseFloat(e.target.value);
+                             setFormData({ ...formData, interestRate: isNaN(val) ? 0 : val });
+                          }}
                           placeholder="e.g. 3.5"
                           className={getInputClass('interestRate')}
                         />
@@ -387,7 +392,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                     value={formData.interestDividend || ''}
                     onChange={e => {
                        if (formData.type !== AssetType.FixedDeposit) {
-                          setFormData({ ...formData, interestDividend: parseFloat(e.target.value) })
+                          const val = parseFloat(e.target.value);
+                          setFormData({ ...formData, interestDividend: isNaN(val) ? 0 : val });
                        }
                     }}
                     className={`w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg outline-none transition-shadow ${
@@ -408,7 +414,9 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                       setFormData({ ...formData, maturityDate: e.target.value });
                       if (errors.maturityDate) setErrors({ ...errors, maturityDate: false });
                     }}
-                    className={getInputClass('maturityDate')}
+                    onKeyDown={(e) => e.preventDefault()} // Prevent typing
+                    onClick={(e) => e.currentTarget.showPicker()} // Open picker on click
+                    className={`${getInputClass('maturityDate')} cursor-pointer`}
                   />
                 </div>
               </div>
