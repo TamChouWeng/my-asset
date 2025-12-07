@@ -48,6 +48,33 @@ import {
   PiggyBank
 } from 'lucide-react';
 
+// --- Helper Functions for Data Parsing ---
+const parseRateFromRemarks = (remarks?: string): number => {
+  if (!remarks) return 0;
+  // Match pattern: [Rate: 3.45%]
+  const match = remarks.match(/\[Rate:\s*([\d.]+)%\]/);
+  return match ? parseFloat(match[1]) : 0;
+};
+
+const parseIntFromRemarks = (remarks?: string): number => {
+  if (!remarks) return 0;
+  // Match pattern: [Int: 100]
+  const match = remarks.match(/\[Int:\s*([\d.]+)\]/);
+  return match ? parseFloat(match[1]) : 0;
+};
+
+const calculateFdInterest = (amount: number, rate: number, startStr: string, endStr?: string): number => {
+  if (!amount || !rate || !startStr || !endStr) return 0;
+  const start = new Date(startStr);
+  const end = new Date(endStr);
+  const diffTime = end.getTime() - start.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  
+  if (diffDays <= 0) return 0;
+  // Simple Interest: (P * R * T) / 36500
+  return parseFloat(((amount * rate * diffDays) / 36500).toFixed(2));
+};
+
 function App() {
   const { user, profile, loading, signOut, updateProfile } = useAuth();
   const [records, setRecords] = useState<AssetRecord[]>([]);
@@ -107,26 +134,20 @@ function App() {
   }, [user]);
 
   const checkMaturity = async (currentRecords: AssetRecord[]) => {
-    // Get today's date in local time to match YYYY-MM-DD format
     const today = new Date().toLocaleDateString('en-CA');
     const updates: string[] = [];
     
     currentRecords.forEach(r => {
-      // Check for Fixed Deposit, Active status, and maturity date passed or is today
       if (r.type === AssetType.FixedDeposit && r.status === AssetStatus.Active && r.maturityDate && r.maturityDate <= today) {
         updates.push(r.id);
       }
     });
 
     if (updates.length > 0) {
-      console.log("Auto-maturing FDs:", updates);
-      
-      // Optimistic update to reflect in UI immediately
       setRecords(prev => prev.map(r => 
         updates.includes(r.id) ? { ...r, status: AssetStatus.Mature } : r
       ));
 
-      // Background update to Supabase
       const { error } = await supabase
         .from('assets')
         .update({ status: 'Mature' })
@@ -147,26 +168,36 @@ function App() {
       if (error) throw error;
 
       if (data) {
-        // Map DB snake_case to CamelCase
-        const mappedData: AssetRecord[] = data.map(item => ({
-          id: item.id,
-          date: item.date,
-          type: item.type,
-          name: item.name,
-          action: item.action,
-          unitPrice: item.unit_price || item.unitPrice,
-          quantity: item.quantity,
-          amount: item.amount,
-          fee: item.fee,
-          interestRate: item.interest_rate || item.interestRate,
-          interestDividend: item.interest_dividend || item.interestDividend,
-          maturityDate: item.maturity_date || item.maturityDate,
-          status: item.status,
-          remarks: item.remarks
-        }));
+        const mappedData: AssetRecord[] = data.map(item => {
+          // Fallback: If DB column missing, parse from Remarks
+          const interestRate = item.interest_rate || parseRateFromRemarks(item.remarks);
+          
+          // Fallback: If DB column missing, calculate FD interest or parse other interest
+          let interestDividend = item.interest_dividend || parseIntFromRemarks(item.remarks);
+          
+          // Force recalculate for Active FDs to ensure accuracy
+          if (item.type === AssetType.FixedDeposit && interestRate > 0 && item.amount > 0 && item.date && (item.maturity_date || item.maturityDate)) {
+             interestDividend = calculateFdInterest(item.amount, interestRate, item.date, item.maturity_date || item.maturityDate);
+          }
+
+          return {
+            id: item.id,
+            date: item.date,
+            type: item.type,
+            name: item.name,
+            action: item.action,
+            unitPrice: item.unit_price || item.unitPrice,
+            quantity: item.quantity,
+            amount: item.amount,
+            fee: item.fee,
+            interestRate: interestRate,
+            interestDividend: interestDividend,
+            maturityDate: item.maturity_date || item.maturityDate,
+            status: item.status,
+            remarks: item.remarks
+          };
+        });
         setRecords(mappedData);
-        
-        // Check for maturity after fetching
         checkMaturity(mappedData);
       }
     } catch (error) {
@@ -185,22 +216,37 @@ function App() {
     }
 
     try {
-      // Map back to snake_case for DB and sanitize data
+      // 1. Prepare Remarks with embedded Metadata (to handle missing DB columns)
+      let finalRemarks = data.remarks || '';
+      // Clean existing system tags to avoid duplication
+      finalRemarks = finalRemarks.replace(/\[Rate:\s*[\d.]+%\]/g, '').replace(/\[Int:\s*[\d.]+\]/g, '').trim();
+
+      if (data.interestRate && data.interestRate > 0) {
+        finalRemarks += ` [Rate: ${data.interestRate}%]`;
+      }
+      
+      // For non-FDs, we preserve user-entered Interest/Dividend
+      if (data.type !== AssetType.FixedDeposit && data.interestDividend && data.interestDividend > 0) {
+        finalRemarks += ` [Int: ${data.interestDividend}]`;
+      }
+      
+      finalRemarks = finalRemarks.trim();
+
+      // 2. Prepare Payload (Exclude missing columns interest_rate/interest_dividend to prevent 400 Error)
       const dbPayload = {
         user_id: user.id,
-        date: data.date,
+        date: data.date ? data.date : null,
         type: data.type,
         name: data.name,
         action: data.action,
-        unit_price: data.unitPrice,
-        quantity: data.quantity,
-        amount: data.amount,
-        fee: data.fee,
-        interest_rate: isNaN(Number(data.interestRate)) ? null : data.interestRate,
-        interest_dividend: isNaN(Number(data.interestDividend)) ? null : data.interestDividend,
+        unit_price: isNaN(Number(data.unitPrice)) ? 0 : data.unitPrice,
+        quantity: isNaN(Number(data.quantity)) ? 0 : data.quantity,
+        amount: isNaN(Number(data.amount)) ? 0 : data.amount,
+        fee: data.fee || 0,
+        // Removed: interest_rate, interest_dividend (Using remarks as fallback storage)
         maturity_date: data.maturityDate || null,
         status: data.status,
-        remarks: data.remarks
+        remarks: finalRemarks
       };
 
       if (editingRecord) {
@@ -212,10 +258,17 @@ function App() {
         if (error) throw error;
         
         // Optimistic Update
-        const updatedRecord = { ...data, id: editingRecord.id };
+        const updatedRecord: AssetRecord = { 
+          ...data, 
+          id: editingRecord.id,
+          remarks: finalRemarks,
+          interestRate: data.interestRate || 0,
+          interestDividend: data.interestDividend || 0 
+        };
+        
         const newRecords = records.map(r => r.id === editingRecord.id ? updatedRecord : r);
         setRecords(newRecords);
-        checkMaturity(newRecords); // Re-check in case user edited date/status
+        checkMaturity(newRecords);
 
       } else {
         const { data: inserted, error } = await supabase
@@ -226,8 +279,15 @@ function App() {
         if (error) throw error;
         
         if (inserted && inserted.length > 0) {
-           // Map the returned row back to AssetRecord
            const newRecord = inserted[0];
+           
+           // Parse back immediately for UI
+           const rRate = parseRateFromRemarks(newRecord.remarks);
+           let rInt = parseIntFromRemarks(newRecord.remarks);
+           if (newRecord.type === AssetType.FixedDeposit && rRate > 0) {
+              rInt = calculateFdInterest(newRecord.amount, rRate, newRecord.date, newRecord.maturity_date);
+           }
+
            const mappedNew: AssetRecord = {
               id: newRecord.id,
               date: newRecord.date,
@@ -238,21 +298,21 @@ function App() {
               quantity: newRecord.quantity,
               amount: newRecord.amount,
               fee: newRecord.fee,
-              interestRate: newRecord.interest_rate,
-              interestDividend: newRecord.interest_dividend,
+              interestRate: rRate,
+              interestDividend: rInt,
               maturityDate: newRecord.maturity_date,
               status: newRecord.status,
               remarks: newRecord.remarks
            };
            const newRecords = [mappedNew, ...records];
            setRecords(newRecords);
-           checkMaturity(newRecords); // Re-check newly added record
+           checkMaturity(newRecords);
         }
       }
       setEditingRecord(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving:", error);
-      alert("Failed to save record.");
+      alert(`Failed to save record: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -308,7 +368,6 @@ function App() {
 
     setPasswordLoading(true);
     try {
-      // 1. Verify Current Password via SignIn
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: user.email,
         password: currentPassword
@@ -318,7 +377,6 @@ function App() {
         throw new Error("Incorrect current password.");
       }
 
-      // 2. Update to new Password
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       
@@ -333,8 +391,6 @@ function App() {
       setPasswordLoading(false);
     }
   };
-
-  // --- STANDARD COMPONENT LOGIC BELOW ---
 
   // Theme Effect
   useEffect(() => {
@@ -366,12 +422,10 @@ function App() {
     const map = new Map<string, number>();
     
     if (filterType === 'All') {
-        // Group by Type
         activeRecords.forEach(r => {
           map.set(r.type, (map.get(r.type) || 0) + r.amount);
         });
     } else {
-        // Filter by Type, Group by Name
         activeRecords
             .filter(r => r.type === filterType)
             .forEach(r => {
@@ -387,25 +441,22 @@ function App() {
     return top;
   }, [records, filterType]);
 
-  // Property Specific Analysis
   const propertyNames = useMemo(() => {
     const props = records.filter(r => r.type === AssetType.Property).map(r => r.name);
     return Array.from(new Set(props)).sort();
   }, [records]);
 
   const propertyMetrics = useMemo(() => {
-    // Filter by selected property name if not 'All'
     const propertyRecords = records.filter(r => 
       r.type === AssetType.Property && 
       (selectedProperty === 'All' || r.name === selectedProperty)
     );
     
-    let totalInvested = 0; // Outflow (Buy, Installment, Pay, Renovation)
-    let totalReturned = 0; // Inflow (Rent, Income, Sold)
+    let totalInvested = 0; 
+    let totalReturned = 0; 
     
     propertyRecords.forEach(r => {
       const action = r.action.toLowerCase();
-      // Logic to categorize actions
       const isOutflow = PROPERTY_ACTIONS.OUTFLOW.some(k => action.includes(k));
       const isInflow = PROPERTY_ACTIONS.INFLOW.some(k => action.includes(k));
 
@@ -425,27 +476,21 @@ function App() {
     };
   }, [records, selectedProperty]);
 
-  // Fixed Deposit Data Logic
+  // FD Metrics
   const fdRecords = useMemo(() => {
     let fds = records.filter(r => r.type === AssetType.FixedDeposit);
-    
-    // Name Filter
     if (fdSearchTerm) {
       fds = fds.filter(r => r.name.toLowerCase().includes(fdSearchTerm.toLowerCase()));
     }
-
-    // Sorting for FD table
     if (fdSort) {
       fds.sort((a, b) => {
         const aVal = a[fdSort.key] ?? '';
         const bVal = b[fdSort.key] ?? '';
-        
         if (aVal < bVal) return fdSort.direction === 'asc' ? -1 : 1;
         if (aVal > bVal) return fdSort.direction === 'asc' ? 1 : -1;
         return 0;
       });
     } else {
-      // Default sort by date desc
       fds.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
     return fds;
@@ -454,6 +499,7 @@ function App() {
   const fdStats = useMemo(() => {
     const activeFDs = records.filter(r => r.type === AssetType.FixedDeposit && r.status === AssetStatus.Active);
     const principal = activeFDs.reduce((sum, r) => sum + r.amount, 0);
+    // Use the on-the-fly calculated interestDividend from records state
     const interest = activeFDs.reduce((sum, r) => sum + (r.interestDividend || 0), 0);
     return { principal, interest };
   }, [records]);
@@ -471,7 +517,6 @@ function App() {
         (r.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
          r.remarks?.toLowerCase().includes(searchTerm.toLowerCase()))
       )
-      // Default sort by date desc if no custom sort
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [records, searchTerm, filterType]);
 
@@ -488,7 +533,6 @@ function App() {
     });
   }, [filteredRecords, sortConfig]);
 
-  // Pagination Logic
   const totalPages = Math.ceil(sortedRecords.length / itemsPerPage);
   
   const paginatedRecords = useMemo(() => {
@@ -496,12 +540,10 @@ function App() {
     return sortedRecords.slice(startIndex, startIndex + itemsPerPage);
   }, [sortedRecords, currentPage, itemsPerPage]);
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filterType, searchTerm, sortConfig, itemsPerPage]);
 
-  // Property Table Logic (Sorting & Pagination)
   const sortedPropertyRecords = useMemo(() => {
     let recs = [...propertyMetrics.records];
     if (propertySort) {
@@ -513,7 +555,6 @@ function App() {
         return 0;
       });
     } else {
-       // Default sort by date desc
        recs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
     return recs;
@@ -591,13 +632,10 @@ function App() {
     visible: { opacity: 1, y: 0 }
   };
 
-  // Close mobile sidebar when view changes
   useEffect(() => {
     setIsMobileOpen(false);
   }, [view]);
 
-  // --- RENDER ---
-  
   if (loading) {
      return (
        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
@@ -634,7 +672,6 @@ function App() {
         md:translate-x-0 md:sticky md:top-0 md:h-screen
         ${isDesktopOpen ? 'md:w-64' : 'md:w-0 md:border-none md:overflow-hidden'}
       `}>
-        {/* Sidebar Content Container (Fixed width to prevent squishing during collapse) */}
         <div className="w-64 h-full flex flex-col relative">
           
           <div className="p-6 flex justify-between items-start">
@@ -655,14 +692,12 @@ function App() {
                 {profile?.display_name || user.email}
               </motion.p>
             </div>
-            {/* Close button for Mobile */}
             <button 
               onClick={() => setIsMobileOpen(false)}
               className="md:hidden text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               <X size={20} />
             </button>
-             {/* Collapse button for Desktop */}
              <button 
               onClick={() => setIsDesktopOpen(false)}
               className="hidden md:block text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors absolute right-4 top-6"
@@ -732,7 +767,6 @@ function App() {
       {/* Main Content */}
       <main className="flex-1 overflow-x-hidden flex flex-col h-screen">
         
-        {/* Top Header Mobile */}
         <header className="md:hidden bg-white dark:bg-slate-900 p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center sticky top-0 z-20 flex-shrink-0 transition-colors">
           <div className="flex items-center gap-3">
             <button 
@@ -748,7 +782,6 @@ function App() {
           </button>
         </header>
 
-        {/* Desktop Expand Sidebar Button - Visible only when sidebar is closed */}
         {!isDesktopOpen && (
           <div className="hidden md:block absolute top-6 left-6 z-30">
             <button 
@@ -761,7 +794,6 @@ function App() {
           </div>
         )}
 
-        {/* Scrollable Content Area */}
         <div className="flex-1 overflow-y-auto">
           <motion.div 
             key={view}
@@ -771,7 +803,6 @@ function App() {
             className="p-4 md:p-8 w-full max-w-[1920px] mx-auto space-y-6"
           >
             
-            {/* Action Bar */}
             <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className={`${!isDesktopOpen ? 'md:ml-12' : ''} transition-all duration-300`}>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
@@ -808,7 +839,6 @@ function App() {
               )}
             </motion.div>
 
-            {/* VIEWS */}
             {view === 'dashboard' && (
               <motion.div variants={itemVariants} className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[calc(100vh-14rem)]">
@@ -999,7 +1029,6 @@ function App() {
                                 </table>
                             </div>
                             
-                            {/* Pagination Controls */}
                             {propertyTotalPages > 1 && (
                               <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm">
                                 <button 
@@ -1031,7 +1060,6 @@ function App() {
 
             {view === 'fixed-deposit' && (
               <motion.div variants={itemVariants} className="space-y-6">
-                 {/* FD Stats Overview */}
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4">
                        <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full shrink-0">
@@ -1060,7 +1088,6 @@ function App() {
                      </div>
                      
                      <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                       {/* Search Box */}
                        <div className="relative flex-1 sm:w-64">
                           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                           <input 
@@ -1156,7 +1183,6 @@ function App() {
                             </table>
                         </div>
                         
-                        {/* Pagination Controls */}
                         {fdTotalPages > 1 && (
                           <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm">
                             <button 
@@ -1186,7 +1212,6 @@ function App() {
 
             {view === 'list' && (
               <motion.div variants={itemVariants} className="space-y-6">
-                {/* Filters */}
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 transition-colors">
                   <div className="flex-1 relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
@@ -1223,7 +1248,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* Main Table */}
                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors flex flex-col">
                   <div className="overflow-x-auto w-full">
                     <table className="w-full text-sm text-left min-w-[900px]">
@@ -1337,7 +1361,6 @@ function App() {
                     </table>
                   </div>
 
-                  {/* Table Pagination */}
                   <div className="border-t border-slate-200 dark:border-slate-800 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm bg-slate-50 dark:bg-slate-900/50">
                      <div className="text-slate-500 dark:text-slate-400">
                        Showing {Math.min(filteredRecords.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredRecords.length, currentPage * itemsPerPage)} of {filteredRecords.length} entries
@@ -1395,7 +1418,6 @@ function App() {
                     </div>
                     
                     <div className="p-6 space-y-6">
-                       {/* Theme Toggle */}
                        <div className="flex items-center justify-between">
                           <div>
                              <p className="font-medium text-slate-900 dark:text-slate-100">{t('setting_theme')}</p>
@@ -1425,7 +1447,6 @@ function App() {
 
                        <div className="h-px bg-slate-100 dark:bg-slate-800"></div>
 
-                       {/* Language Toggle */}
                        <div className="flex items-center justify-between">
                           <div>
                              <p className="font-medium text-slate-900 dark:text-slate-100">{t('setting_language')}</p>
@@ -1447,7 +1468,6 @@ function App() {
                     </div>
                  </div>
 
-                 {/* Security Section */}
                  <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <div className="p-6 border-b border-slate-200 dark:border-slate-800">
                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -1471,7 +1491,6 @@ function App() {
                     </div>
                  </div>
 
-                 {/* Account */}
                  <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <div className="p-6 border-b border-slate-200 dark:border-slate-800">
                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
@@ -1494,7 +1513,6 @@ function App() {
                     </div>
                  </div>
 
-                 {/* Version Info */}
                  <div className="text-center pt-4 pb-8 text-slate-400 dark:text-slate-600 text-xs">
                     Version: Beta 1.0
                  </div>
