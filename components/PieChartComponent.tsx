@@ -1,34 +1,19 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { motion } from 'framer-motion';
 import { AssetRecord, AssetStatus, ChartDataPoint, AssetType } from '../types';
-import { COLORS } from '../constants';
+import { COLORS, DETAIL_COLORS } from '../constants';
 
 interface PieChartComponentProps {
   data: AssetRecord[];
   theme: 'light' | 'dark';
   t: (key: string) => string;
+  filterType: string;
+  onFilterChange: (type: string) => void;
 }
 
-// Color palette for individual assets breakdown
-const DETAIL_COLORS = [
-  '#3b82f6', // blue-500
-  '#10b981', // emerald-500
-  '#8b5cf6', // violet-500
-  '#f59e0b', // amber-500
-  '#ef4444', // red-500
-  '#ec4899', // pink-500
-  '#6366f1', // indigo-500
-  '#14b8a6', // teal-500
-  '#f97316', // orange-500
-  '#84cc16', // lime-500
-  '#06b6d4', // cyan-500
-  '#a855f7', // purple-500
-];
-
-const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t }) => {
-  const [filterType, setFilterType] = useState<string>('All');
-
+const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, filterType, onFilterChange }) => {
+  
   // Aggregate data based on filter
   const aggregatedData = useMemo(() => {
     const map = new Map<string, number>();
@@ -92,7 +77,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t })
         </h3>
         <select
           value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
+          onChange={(e) => onFilterChange(e.target.value)}
           className="bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none cursor-pointer transition-colors"
         >
           <option value="All">{t('all_assets')}</option>
@@ -105,7 +90,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t })
       {aggregatedData.length > 0 ? (
         <div className="flex-1 min-h-0 min-w-0">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart margin={{ bottom: 20 }}>
+            <PieChart margin={{ top: 0, right: 0, bottom: 20, left: 0 }}>
               <Pie
                 data={aggregatedData}
                 cx="50%"

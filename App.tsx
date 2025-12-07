@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetRecord, AssetType, AssetStatus } from './types';
-import { TRANSLATIONS, Language } from './constants';
+import { TRANSLATIONS, Language, PROPERTY_ACTIONS } from './constants';
 import PieChartComponent from './components/PieChartComponent';
 import TransactionForm from './components/TransactionForm';
 import Chatbot from './components/Chatbot';
@@ -44,7 +44,8 @@ import {
   FileJson,
   ChevronDown,
   ChevronUp,
-  Landmark
+  Landmark,
+  PiggyBank
 } from 'lucide-react';
 
 function App() {
@@ -157,6 +158,7 @@ function App() {
           quantity: item.quantity,
           amount: item.amount,
           fee: item.fee,
+          interestRate: item.interest_rate || item.interestRate,
           interestDividend: item.interest_dividend || item.interestDividend,
           maturityDate: item.maturity_date || item.maturityDate,
           status: item.status,
@@ -194,6 +196,7 @@ function App() {
         quantity: data.quantity,
         amount: data.amount,
         fee: data.fee,
+        interest_rate: data.interestRate,
         interest_dividend: data.interestDividend,
         maturity_date: data.maturityDate,
         status: data.status,
@@ -235,6 +238,7 @@ function App() {
               quantity: newRecord.quantity,
               amount: newRecord.amount,
               fee: newRecord.fee,
+              interestRate: newRecord.interest_rate,
               interestDividend: newRecord.interest_dividend,
               maturityDate: newRecord.maturity_date,
               status: newRecord.status,
@@ -353,20 +357,35 @@ function App() {
   const totalValue = useMemo(() => {
     return records
       .filter(r => r.status === 'Active')
+      .filter(r => filterType === 'All' || r.type === filterType)
       .reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  }, [records]);
+  }, [records, filterType]);
 
-  const topAssetClass = useMemo(() => {
+  const topAssetMetric = useMemo(() => {
+    const activeRecords = records.filter(r => r.status === 'Active');
     const map = new Map<string, number>();
-    records.filter(r => r.status === 'Active').forEach(r => {
-      map.set(r.type, (map.get(r.type) || 0) + r.amount);
-    });
-    let top = { type: 'N/A', value: 0 };
+    
+    if (filterType === 'All') {
+        // Group by Type
+        activeRecords.forEach(r => {
+          map.set(r.type, (map.get(r.type) || 0) + r.amount);
+        });
+    } else {
+        // Filter by Type, Group by Name
+        activeRecords
+            .filter(r => r.type === filterType)
+            .forEach(r => {
+                map.set(r.name, (map.get(r.name) || 0) + r.amount);
+            });
+    }
+
+    let top = { name: 'N/A', value: 0 };
     map.forEach((val, key) => {
-      if (val > top.value) top = { type: key, value: val };
+      if (val > top.value) top = { name: key, value: val };
     });
+    
     return top;
-  }, [records]);
+  }, [records, filterType]);
 
   // Property Specific Analysis
   const propertyNames = useMemo(() => {
@@ -387,8 +406,8 @@ function App() {
     propertyRecords.forEach(r => {
       const action = r.action.toLowerCase();
       // Logic to categorize actions
-      const isOutflow = ['buy', 'pay', 'installment', 'downpayment', 'maintenance', 'expense', 'tax', 'renovation'].some(k => action.includes(k));
-      const isInflow = ['rent', 'income', 'sold', 'dividend'].some(k => action.includes(k));
+      const isOutflow = PROPERTY_ACTIONS.OUTFLOW.some(k => action.includes(k));
+      const isInflow = PROPERTY_ACTIONS.INFLOW.some(k => action.includes(k));
 
       if (isOutflow) {
         totalInvested += r.amount;
@@ -431,6 +450,13 @@ function App() {
     }
     return fds;
   }, [records, fdSort, fdSearchTerm]);
+
+  const fdStats = useMemo(() => {
+    const activeFDs = records.filter(r => r.type === AssetType.FixedDeposit && r.status === AssetStatus.Active);
+    const principal = activeFDs.reduce((sum, r) => sum + r.amount, 0);
+    const interest = activeFDs.reduce((sum, r) => sum + (r.interestDividend || 0), 0);
+    return { principal, interest };
+  }, [records]);
 
   const fdTotalPages = Math.ceil(fdRecords.length / fdRowsPerPage);
   const paginatedFdRecords = useMemo(() => {
@@ -787,7 +813,13 @@ function App() {
               <motion.div variants={itemVariants} className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[calc(100vh-14rem)]">
                   <div className="lg:col-span-2 h-full">
-                     <PieChartComponent data={records} theme={theme} t={t} />
+                     <PieChartComponent 
+                        data={records} 
+                        theme={theme} 
+                        t={t}
+                        filterType={filterType}
+                        onFilterChange={setFilterType}
+                     />
                   </div>
                   <div className="flex flex-col gap-4 h-full">
                     <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all flex-1">
@@ -795,7 +827,9 @@ function App() {
                         <Wallet size={24} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{t('stat_total_assets')}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                           {filterType === 'All' ? t('stat_total_assets') : `Total ${filterType} (Active)`}
+                        </p>
                         <p className="text-xl xl:text-2xl font-bold text-slate-900 dark:text-slate-100 truncate">{formatCurrency(totalValue)}</p>
                       </div>
                     </motion.div>
@@ -805,9 +839,11 @@ function App() {
                         <TrendingUp size={24} />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{t('stat_top_asset')}</p>
-                        <p className="text-xl xl:text-2xl font-bold text-slate-900 dark:text-slate-100 truncate">{topAssetClass.type}</p>
-                        <p className="text-xs text-slate-500 truncate">{formatCurrency(topAssetClass.value)}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                           {filterType === 'All' ? t('stat_top_asset') : `Top ${filterType} Asset`}
+                        </p>
+                        <p className="text-xl xl:text-2xl font-bold text-slate-900 dark:text-slate-100 truncate">{topAssetMetric.name}</p>
+                        <p className="text-xs text-slate-500 truncate">{formatCurrency(topAssetMetric.value)}</p>
                       </div>
                     </motion.div>
 
@@ -995,12 +1031,31 @@ function App() {
 
             {view === 'fixed-deposit' && (
               <motion.div variants={itemVariants} className="space-y-6">
+                 {/* FD Stats Overview */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+                       <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full shrink-0">
+                          <Landmark size={24} />
+                       </div>
+                       <div>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_fd_principal')}</p>
+                          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(fdStats.principal)}</p>
+                       </div>
+                    </div>
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+                       <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full shrink-0">
+                          <PiggyBank size={24} />
+                       </div>
+                       <div>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_fd_interest')}</p>
+                          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(fdStats.interest)}</p>
+                       </div>
+                    </div>
+                 </div>
+
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg">
-                           <Landmark size={20} />
-                        </div>
                         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('title_fixed_deposit')}</h3>
                      </div>
                      

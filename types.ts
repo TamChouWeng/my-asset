@@ -23,6 +23,7 @@ export interface AssetRecord {
   quantity?: number;
   amount: number; // The Total Amount
   fee?: number;
+  interestRate?: number; // Annual Interest Rate (%)
   interestDividend?: number;
   maturityDate?: string;
   status: AssetStatus;
@@ -33,6 +34,7 @@ export interface ChartDataPoint {
   name: string;
   value: number;
   color: string;
+  [key: string]: any;
 }
 
 export interface UserProfile {

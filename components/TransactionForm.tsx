@@ -24,6 +24,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
     amount: 0,
     unitPrice: 0,
     quantity: 0,
+    interestRate: 0,
   });
 
   const [errors, setErrors] = useState<Record<string, boolean>>({});
@@ -42,12 +43,46 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
         name: '',
         quantity: 0,
         unitPrice: 0,
-        remarks: ''
+        remarks: '',
+        interestRate: 0,
+        interestDividend: 0
       });
     }
     // Clear errors when opening/changing record
     setErrors({});
   }, [initialData, isOpen]);
+
+  // Auto-calculate FD Interest
+  useEffect(() => {
+    if (
+      formData.type === AssetType.FixedDeposit && 
+      formData.amount && 
+      formData.amount > 0 &&
+      formData.interestRate && 
+      formData.interestRate > 0 &&
+      formData.date && 
+      formData.maturityDate
+    ) {
+      const start = new Date(formData.date);
+      const end = new Date(formData.maturityDate);
+      
+      // Calculate difference in milliseconds
+      const diffTime = end.getTime() - start.getTime();
+      // Convert to days
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 0) {
+        // Simple Interest Formula: (Principal * Rate * Days) / (365 * 100)
+        const calculatedInterest = (formData.amount * formData.interestRate * diffDays) / 36500;
+        setFormData(prev => ({ 
+          ...prev, 
+          interestDividend: parseFloat(calculatedInterest.toFixed(2)) 
+        }));
+      } else {
+        setFormData(prev => ({ ...prev, interestDividend: 0 }));
+      }
+    }
+  }, [formData.amount, formData.interestRate, formData.date, formData.maturityDate, formData.type]);
 
   const validateForm = () => {
     const newErrors: Record<string, boolean> = {};
@@ -60,16 +95,14 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
     if (!formData.action) newErrors.action = true;
     if (!formData.status) newErrors.status = true;
     
-    // Ensure numbers are entered (allow 0 if specifically needed, but usually we want > 0, 
-    // checking for undefined or null here essentially)
-    if (formData.unitPrice === undefined || formData.unitPrice === null || formData.unitPrice === 0 && formData.action !== 'Dividend') { 
-       // Note: Allowing 0 for unit price might be valid for gifts/airdrops, but let's strict validate based on request
-       // Keeping simple check for empty/undefined mainly.
-    }
-    
-    // Check strict numeric requirement if user wants 'filled in'
+    // Check strict numeric requirement
     if (formData.unitPrice === undefined || String(formData.unitPrice) === '') newErrors.unitPrice = true;
     if (formData.quantity === undefined || String(formData.quantity) === '') newErrors.quantity = true;
+
+    // Fixed Deposit Specific Validation
+    if (formData.type === AssetType.FixedDeposit) {
+       if (!formData.maturityDate) newErrors.maturityDate = true;
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -174,10 +207,16 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                     value={formData.type}
                     onChange={e => {
                       const newType = e.target.value as AssetType;
+                      let defaultAction = 'Buy';
+                      if (newType === AssetType.Property) defaultAction = 'Pay';
+                      if (newType === AssetType.EPF) defaultAction = 'Self contribute';
+                      
                       setFormData({ 
                         ...formData, 
                         type: newType,
-                        action: newType === AssetType.Property ? 'Pay' : 'Buy'
+                        action: defaultAction,
+                        interestRate: 0, // Reset interest rate on type change
+                        interestDividend: 0
                       });
                       if (errors.type) setErrors({ ...errors, type: false });
                     }}
@@ -227,6 +266,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                       <option value="Sold">Sold</option>
                       <option value="Renovation">Renovation</option>
                       <option value="Maintenance">Maintenance</option>
+                    </select>
+                  ) : formData.type === AssetType.EPF ? (
+                    <select
+                      value={formData.action || ''}
+                      onChange={e => {
+                        setFormData({ ...formData, action: e.target.value });
+                        if (errors.action) setErrors({ ...errors, action: false });
+                      }}
+                      className={getInputClass('action')}
+                    >
+                      <option value="Self contribute">Self contribute</option>
+                      <option value="Employee contribute">Employee contribute</option>
                     </select>
                   ) : (
                     <select
@@ -304,30 +355,65 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </div>
               </div>
 
-              {/* Row 5: Interest & Maturity - Stack on mobile */}
+              {/* Row 5: FD Specifics or General Interest */}
+              {formData.type === AssetType.FixedDeposit && (
+                 <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
+                     <div>
+                        <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                          Interest Rate (% p.a.)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={formData.interestRate || ''}
+                          onChange={e => setFormData({ ...formData, interestRate: parseFloat(e.target.value) })}
+                          placeholder="e.g. 3.5"
+                          className={getInputClass('interestRate')}
+                        />
+                     </div>
+                 </div>
+              )}
+
+              {/* Row 6: Interest & Maturity - Stack on mobile */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Int/Dividend</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    {formData.type === AssetType.FixedDeposit ? "Expected Interest (Auto)" : "Int/Dividend"}
+                  </label>
                   <input
                     type="number"
                     step="0.01"
+                    readOnly={formData.type === AssetType.FixedDeposit}
                     value={formData.interestDividend || ''}
-                    onChange={e => setFormData({ ...formData, interestDividend: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    onChange={e => {
+                       if (formData.type !== AssetType.FixedDeposit) {
+                          setFormData({ ...formData, interestDividend: parseFloat(e.target.value) })
+                       }
+                    }}
+                    className={`w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg outline-none transition-shadow ${
+                      formData.type === AssetType.FixedDeposit 
+                        ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 cursor-not-allowed' 
+                        : 'bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Maturity Date</label>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Maturity Date {formData.type === AssetType.FixedDeposit && <MandatoryMark />}
+                  </label>
                   <input
                     type="date"
                     value={formData.maturityDate || ''}
-                    onChange={e => setFormData({ ...formData, maturityDate: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow"
+                    onChange={e => {
+                      setFormData({ ...formData, maturityDate: e.target.value });
+                      if (errors.maturityDate) setErrors({ ...errors, maturityDate: false });
+                    }}
+                    className={getInputClass('maturityDate')}
                   />
                 </div>
               </div>
 
-              {/* Row 6: Remarks - Always full width */}
+              {/* Row 7: Remarks - Always full width */}
               <div>
                 <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Remarks</label>
                 <textarea
