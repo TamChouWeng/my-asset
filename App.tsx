@@ -82,6 +82,7 @@ function App() {
   const [fdPage, setFdPage] = useState(1);
   const [fdRowsPerPage, setFdRowsPerPage] = useState(10);
   const [fdSort, setFdSort] = useState<{ key: keyof AssetRecord; direction: 'asc' | 'desc' } | null>(null);
+  const [fdSearchTerm, setFdSearchTerm] = useState('');
 
   // Password Reset State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -345,6 +346,7 @@ function App() {
   useEffect(() => {
     setPropertyPage(1);
     setFdPage(1);
+    setFdSearchTerm('');
   }, [view, selectedProperty]);
 
   // Computed Metrics
@@ -408,6 +410,11 @@ function App() {
   const fdRecords = useMemo(() => {
     let fds = records.filter(r => r.type === AssetType.FixedDeposit);
     
+    // Name Filter
+    if (fdSearchTerm) {
+      fds = fds.filter(r => r.name.toLowerCase().includes(fdSearchTerm.toLowerCase()));
+    }
+
     // Sorting for FD table
     if (fdSort) {
       fds.sort((a, b) => {
@@ -423,7 +430,7 @@ function App() {
       fds.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
     return fds;
-  }, [records, fdSort]);
+  }, [records, fdSort, fdSearchTerm]);
 
   const fdTotalPages = Math.ceil(fdRecords.length / fdRowsPerPage);
   const paginatedFdRecords = useMemo(() => {
@@ -989,23 +996,38 @@ function App() {
             {view === 'fixed-deposit' && (
               <motion.div variants={itemVariants} className="space-y-6">
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                  <div className="flex items-center justify-between mb-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
                      <div className="flex items-center gap-3">
                         <div className="p-2 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg">
                            <Landmark size={20} />
                         </div>
                         <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('title_fixed_deposit')}</h3>
                      </div>
-                     <div className="flex items-center gap-2 text-xs">
-                        <select 
-                           value={fdRowsPerPage} 
-                           onChange={(e) => { setFdRowsPerPage(Number(e.target.value)); setFdPage(1); }}
-                           className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 focus:outline-none"
-                        >
-                           <option value={10}>10 / page</option>
-                           <option value={20}>20 / page</option>
-                           <option value={50}>50 / page</option>
-                        </select>
+                     
+                     <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                       {/* Search Box */}
+                       <div className="relative flex-1 sm:w-64">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                          <input 
+                              type="text" 
+                              placeholder="Search Name..." 
+                              value={fdSearchTerm}
+                              onChange={(e) => setFdSearchTerm(e.target.value)}
+                              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                       </div>
+
+                       <div className="flex items-center gap-2 text-xs">
+                          <select 
+                             value={fdRowsPerPage} 
+                             onChange={(e) => { setFdRowsPerPage(Number(e.target.value)); setFdPage(1); }}
+                             className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-2 focus:outline-none"
+                          >
+                             <option value={10}>10 / page</option>
+                             <option value={20}>20 / page</option>
+                             <option value={50}>50 / page</option>
+                          </select>
+                       </div>
                      </div>
                   </div>
 
@@ -1035,7 +1057,12 @@ function App() {
                                        <ArrowUpDown size={12} className="opacity-50" />
                                      </div>
                                   </th>
-                                  <th className="px-4 py-3 whitespace-nowrap">{t('table_maturity')}</th>
+                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('maturityDate')}>
+                                     <div className="flex items-center gap-1">
+                                       {t('table_maturity')}
+                                       <ArrowUpDown size={12} className="opacity-50" />
+                                     </div>
+                                  </th>
                                   <th className="px-4 py-3 whitespace-nowrap text-center">{t('table_actions')}</th>
                                 </tr>
                               </thead>

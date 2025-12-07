@@ -151,7 +151,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
             <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
               {/* Row 1: Date & Type - Stack on mobile, Side-by-side on tablet */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+                <div className="w-full">
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
                     Date <MandatoryMark />
                   </label>
@@ -162,7 +162,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                       setFormData({ ...formData, date: e.target.value });
                       if (errors.date) setErrors({ ...errors, date: false });
                     }}
-                    className={getInputClass('date')}
+                    className={`${getInputClass('date')} block w-full min-w-full`}
+                    style={{ width: '100%', display: 'block' }}
                   />
                 </div>
                 <div>
