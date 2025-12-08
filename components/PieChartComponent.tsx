@@ -88,7 +88,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, f
       </div>
 
       {aggregatedData.length > 0 ? (
-        <div className="flex-1 min-h-0 min-w-0">
+        <div className="flex-1 min-h-[250px] min-w-0 relative">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart margin={{ top: 0, right: 0, bottom: 20, left: 0 }}>
               <Pie

@@ -1145,6 +1145,12 @@ function App() {
                                        <ArrowUpDown size={12} className="opacity-50" />
                                      </div>
                                   </th>
+                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('interestDividend')}>
+                                     <div className="flex items-center gap-1">
+                                       {t('table_interest')}
+                                       <ArrowUpDown size={12} className="opacity-50" />
+                                     </div>
+                                  </th>
                                   <th className="px-4 py-3 whitespace-nowrap text-center">{t('table_actions')}</th>
                                 </tr>
                               </thead>
@@ -1165,6 +1171,9 @@ function App() {
                                     </td>
                                     <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
                                        {item.maturityDate || '-'}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                                       {formatCurrency(item.interestDividend || 0)}
                                     </td>
                                     <td className="px-4 py-3">
                                        <div className="flex items-center justify-center gap-2">
