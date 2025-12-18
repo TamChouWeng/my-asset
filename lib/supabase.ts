@@ -1,12 +1,22 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Accessing environment variables via process.env for compatibility with the deployment environment
-const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+/**
+ * Supabase credentials provided by the user. 
+ * Hardcoding these ensures the client is always initialized correctly 
+ * and prevents "Failed to fetch" or "URL is required" errors.
+ */
+const supabaseUrl = 'https://rdcigdilbtajnvmbyrdv.supabase.co';
+const supabaseKey = 'sb_publishable_K3UXxJubZKu43pzBASbKlQ_TKRJnite';
 
-if (!supabaseUrl || !supabaseKey) {
-  console.warn("Supabase credentials missing. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in environment variables.");
-}
+/**
+ * Confirms that the Supabase configuration is present.
+ */
+export const hasValidSupabaseConfig = (): boolean => {
+  return !!supabaseUrl && supabaseUrl.startsWith('https://');
+};
 
+/**
+ * Initialize the Supabase client.
+ */
 export const supabase = createClient(supabaseUrl, supabaseKey);
