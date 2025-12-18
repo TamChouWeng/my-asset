@@ -1,6 +1,8 @@
+
+// Import React to provide namespace for React.FC and React.FormEvent
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
-import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, RefreshCcw, Minimize2 } from 'lucide-react';
+import { X, Send, Bot, Loader2, Sparkles, RefreshCcw, Minimize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AssetRecord } from '../types';
 
@@ -40,9 +42,10 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   const initChat = async () => {
     try {
+      // Use the injected API key from process.env as per requirements
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      // Prepare simplified data for context to save tokens and focus on content
+      // Prepare simplified data for context
       const simplifiedRecords = records.map(r => ({
         date: r.date,
         type: r.type,
@@ -60,18 +63,16 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
         ${JSON.stringify(simplifiedRecords)}
         
         **Directives**:
-        1. **Be Direct**: Answer the user's question immediately. Avoid preamble like "Here is the analysis" or "Based on the data".
-        2. **Summarize**: If asked about portfolio status, start with the **Total Net Worth** (Sum of 'Active' assets).
+        1. **Be Direct**: Answer the user's question immediately.
+        2. **Portfolio Context**: Use the provided user data to answer questions about net worth, specific asset types, or transaction history.
         3. **Formatting**: 
-           - Use **bold** (double asterisks) for currency values (e.g., **RM 1,200**) and key terms.
-           - Use bullet points (start line with *) for lists.
-           - Keep paragraphs short and readable.
-        4. **Logic**: Only count 'Active' assets for totals.
-        5. **Tone**: Professional, encouraging, and concise.
+           - Use **bold** for currency (e.g., **RM 1,200**).
+           - Use bullet points for lists.
+        4. **Logic**: Only count 'Active' assets for current totals unless asked otherwise.
       `;
 
       const chat = ai.chats.create({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         config: {
           systemInstruction: systemInstruction,
         },
@@ -117,6 +118,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
       let fullText = '';
       for await (const chunk of result) {
+        // Access .text property directly (not as a method)
         const text = (chunk as GenerateContentResponse).text;
         if (text) {
           fullText += text;
@@ -139,15 +141,12 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
     }
   };
 
-  // Helper to parse bold text and lists for better readability
   const formatMessage = (text: string) => {
     const lines = text.split('\n');
     return lines.map((line, i) => {
-      // Handle list items
       const isListItem = line.trim().startsWith('* ') || line.trim().startsWith('- ');
       const content = isListItem ? line.trim().substring(2) : line;
       
-      // Parse bold text: **text**
       const parts = content.split(/(\*\*.*?\*\*)/g);
       const formattedContent = parts.map((part, index) => {
         if (part.startsWith('**') && part.endsWith('**')) {
@@ -175,7 +174,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   return (
     <>
-      {/* Floating Toggle Button */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -185,7 +183,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
         {isOpen ? <X size={24} /> : <Sparkles size={24} />}
       </motion.button>
 
-      {/* Chat Window */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -195,7 +192,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
             transition={{ duration: 0.2 }}
             className="fixed bottom-24 right-6 z-50 w-full max-w-[400px] h-[600px] max-h-[80vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden"
           >
-            {/* Header */}
             <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2">
                 <Bot size={20} />
@@ -222,7 +218,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
               </div>
             </div>
 
-            {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-950/50">
               {messages.map((msg) => (
                 <div
@@ -253,7 +248,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
             <form onSubmit={handleSendMessage} className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
               <div className="relative flex items-center gap-2">
                 <input

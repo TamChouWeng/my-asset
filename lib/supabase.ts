@@ -1,7 +1,22 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-// Vite uses import.meta.env and requires variables to start with VITE_
-const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || '';
-const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || '';
+/**
+ * Supabase credentials provided by the user. 
+ * Hardcoding these ensures the client is always initialized correctly 
+ * and prevents "Failed to fetch" or "URL is required" errors.
+ */
+const supabaseUrl = 'https://rdcigdilbtajnvmbyrdv.supabase.co';
+const supabaseKey = 'sb_publishable_K3UXxJubZKu43pzBASbKlQ_TKRJnite';
 
+/**
+ * Confirms that the Supabase configuration is present.
+ */
+export const hasValidSupabaseConfig = (): boolean => {
+  return !!supabaseUrl && supabaseUrl.startsWith('https://');
+};
+
+/**
+ * Initialize the Supabase client.
+ */
 export const supabase = createClient(supabaseUrl, supabaseKey);

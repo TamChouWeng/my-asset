@@ -800,7 +800,7 @@ function App() {
             initial="hidden"
             animate="visible"
             variants={containerVariants}
-            className="p-4 md:p-8 w-full max-w-[1920px] mx-auto space-y-6"
+            className={`px-4 md:px-6 py-4 w-full mx-auto space-y-4`}
           >
             
             <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -840,9 +840,9 @@ function App() {
             </motion.div>
 
             {view === 'dashboard' && (
-              <motion.div variants={itemVariants} className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[calc(100vh-14rem)]">
-                  <div className="lg:col-span-2 h-full">
+              <motion.div variants={itemVariants} className="space-y-4 h-full flex flex-col">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:min-h-[calc(100vh-7rem)]">
+                  <div className="lg:col-span-3 h-full">
                      <PieChartComponent 
                         data={records} 
                         theme={theme} 
@@ -852,38 +852,38 @@ function App() {
                      />
                   </div>
                   <div className="flex flex-col gap-4 h-full">
-                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all flex-1">
+                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-1">
                       <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full shrink-0">
                         <Wallet size={24} />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
-                           {filterType === 'All' ? t('stat_total_assets') : `Total ${filterType} (Active)`}
+                      <div className="min-w-0 w-full">
+                        <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">
+                           {filterType === 'All' ? t('stat_total_assets') : `Total ${filterType}`}
                         </p>
-                        <p className="text-xl xl:text-2xl font-bold text-slate-900 dark:text-slate-100 truncate">{formatCurrency(totalValue)}</p>
+                        <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{formatCurrency(totalValue)}</p>
                       </div>
                     </motion.div>
 
-                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all flex-1">
+                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-1">
                       <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full shrink-0">
                         <TrendingUp size={24} />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                      <div className="min-w-0 w-full">
+                        <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">
                            {filterType === 'All' ? t('stat_top_asset') : `Top ${filterType} Asset`}
                         </p>
-                        <p className="text-xl xl:text-2xl font-bold text-slate-900 dark:text-slate-100 truncate">{topAssetMetric.name}</p>
+                        <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{topAssetMetric.name}</p>
                         <p className="text-xs text-slate-500 truncate">{formatCurrency(topAssetMetric.value)}</p>
                       </div>
                     </motion.div>
 
-                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4 transition-all flex-1">
+                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-1">
                       <div className="p-3 bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full shrink-0">
                         <Table2 size={24} />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{t('stat_total_records')}</p>
-                        <p className="text-xl xl:text-2xl font-bold text-slate-900 dark:text-slate-100 truncate">{records.length}</p>
+                      <div className="min-w-0 w-full">
+                        <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">{t('stat_total_records')}</p>
+                        <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{records.length}</p>
                       </div>
                     </motion.div>
                   </div>
