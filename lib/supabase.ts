@@ -1,7 +1,12 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-// Vite uses import.meta.env and requires variables to start with VITE_
-const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL || '';
-const supabaseKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY || '';
+// Accessing environment variables via process.env for compatibility with the deployment environment
+const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
+
+if (!supabaseUrl || !supabaseKey) {
+  console.warn("Supabase credentials missing. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in environment variables.");
+}
 
 export const supabase = createClient(supabaseUrl, supabaseKey);

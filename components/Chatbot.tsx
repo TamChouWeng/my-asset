@@ -1,6 +1,8 @@
+
+// Import React to provide namespace for React.FC and React.FormEvent
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
-import { MessageCircle, X, Send, Bot, User, Loader2, Sparkles, RefreshCcw, Minimize2 } from 'lucide-react';
+import { X, Send, Bot, Loader2, Sparkles, RefreshCcw, Minimize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AssetRecord } from '../types';
 
@@ -40,6 +42,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   const initChat = async () => {
     try {
+      // Always initialize GoogleGenAI with a named parameter object
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       // Prepare simplified data for context to save tokens and focus on content
@@ -70,8 +73,9 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
         5. **Tone**: Professional, encouraging, and concise.
       `;
 
+      // Use ai.chats.create to start a conversational session
       const chat = ai.chats.create({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3-flash-preview',
         config: {
           systemInstruction: systemInstruction,
         },
@@ -110,6 +114,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
     setIsLoading(true);
 
     try {
+      // Use sendMessageStream for natural streaming output
       const result = await chatSession.sendMessageStream({ message: userMsg.text });
       
       const botMsgId = (Date.now() + 1).toString();
@@ -117,6 +122,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
       let fullText = '';
       for await (const chunk of result) {
+        // Access .text property directly from the chunk (chunk is of type GenerateContentResponse)
         const text = (chunk as GenerateContentResponse).text;
         if (text) {
           fullText += text;
@@ -139,15 +145,12 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
     }
   };
 
-  // Helper to parse bold text and lists for better readability
   const formatMessage = (text: string) => {
     const lines = text.split('\n');
     return lines.map((line, i) => {
-      // Handle list items
       const isListItem = line.trim().startsWith('* ') || line.trim().startsWith('- ');
       const content = isListItem ? line.trim().substring(2) : line;
       
-      // Parse bold text: **text**
       const parts = content.split(/(\*\*.*?\*\*)/g);
       const formattedContent = parts.map((part, index) => {
         if (part.startsWith('**') && part.endsWith('**')) {
@@ -175,7 +178,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   return (
     <>
-      {/* Floating Toggle Button */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -185,7 +187,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
         {isOpen ? <X size={24} /> : <Sparkles size={24} />}
       </motion.button>
 
-      {/* Chat Window */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -195,7 +196,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
             transition={{ duration: 0.2 }}
             className="fixed bottom-24 right-6 z-50 w-full max-w-[400px] h-[600px] max-h-[80vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden"
           >
-            {/* Header */}
             <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex justify-between items-center shrink-0">
               <div className="flex items-center gap-2">
                 <Bot size={20} />
@@ -222,7 +222,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
               </div>
             </div>
 
-            {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-950/50">
               {messages.map((msg) => (
                 <div
@@ -253,7 +252,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
             <form onSubmit={handleSendMessage} className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
               <div className="relative flex items-center gap-2">
                 <input
