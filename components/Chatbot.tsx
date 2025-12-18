@@ -42,10 +42,10 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   const initChat = async () => {
     try {
-      // Use the injected API key from process.env as per requirements
+      // Always initialize GoogleGenAI with a named parameter object
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      // Prepare simplified data for context
+      // Prepare simplified data for context to save tokens and focus on content
       const simplifiedRecords = records.map(r => ({
         date: r.date,
         type: r.type,
@@ -63,14 +63,17 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
         ${JSON.stringify(simplifiedRecords)}
         
         **Directives**:
-        1. **Be Direct**: Answer the user's question immediately.
-        2. **Portfolio Context**: Use the provided user data to answer questions about net worth, specific asset types, or transaction history.
+        1. **Be Direct**: Answer the user's question immediately. Avoid preamble like "Here is the analysis" or "Based on the data".
+        2. **Summarize**: If asked about portfolio status, start with the **Total Net Worth** (Sum of 'Active' assets).
         3. **Formatting**: 
-           - Use **bold** for currency (e.g., **RM 1,200**).
-           - Use bullet points for lists.
-        4. **Logic**: Only count 'Active' assets for current totals unless asked otherwise.
+           - Use **bold** (double asterisks) for currency values (e.g., **RM 1,200**) and key terms.
+           - Use bullet points (start line with *) for lists.
+           - Keep paragraphs short and readable.
+        4. **Logic**: Only count 'Active' assets for totals.
+        5. **Tone**: Professional, encouraging, and concise.
       `;
 
+      // Use ai.chats.create to start a conversational session
       const chat = ai.chats.create({
         model: 'gemini-3-flash-preview',
         config: {
@@ -111,6 +114,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
     setIsLoading(true);
 
     try {
+      // Use sendMessageStream for natural streaming output
       const result = await chatSession.sendMessageStream({ message: userMsg.text });
       
       const botMsgId = (Date.now() + 1).toString();
@@ -118,7 +122,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
       let fullText = '';
       for await (const chunk of result) {
-        // Access .text property directly (not as a method)
+        // Access .text property directly from the chunk (chunk is of type GenerateContentResponse)
         const text = (chunk as GenerateContentResponse).text;
         if (text) {
           fullText += text;
