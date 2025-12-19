@@ -1523,7 +1523,7 @@ function App() {
                  </div>
 
                  <div className="text-center pt-4 pb-8 text-slate-400 dark:text-slate-600 text-xs">
-                    Version: Beta 1.0
+                    Version: Beta 1.1
                  </div>
               </motion.div>
             )}
@@ -1570,7 +1570,7 @@ function App() {
                         type="password"
                         required
                         value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        onChange={(e) => currentPassword(e.target.value)}
                         className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="••••••••"
                       />

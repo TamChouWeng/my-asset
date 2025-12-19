@@ -2,7 +2,7 @@
 
 **My Asset** is a robust, cloud-native application designed to help you track, visualize, and manage your financial portfolio. Built with React and Supabase, it offers enterprise-grade data security, real-time synchronization, and AI-powered insights.
 
-**Current Version:** Beta 1.0
+**Current Version:** Beta 1.1
 
 ## 🚀 Features
 
