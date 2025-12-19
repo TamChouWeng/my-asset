@@ -1,8 +1,7 @@
 
-// Import React to provide namespace for React.FC and React.FormEvent
 import React, { useState, useRef, useEffect } from 'react';
-import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
-import { X, Send, Bot, Loader2, Sparkles, RefreshCcw, Minimize2 } from 'lucide-react';
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { X, Send, Bot, Loader2, Sparkles, RefreshCcw, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AssetRecord } from '../types';
 
@@ -23,82 +22,30 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [chatSession, setChatSession] = useState<Chat | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const constraintsRef = useRef(null);
 
-  // Initialize Chat
+  // Initialize Welcome Message
   useEffect(() => {
-    if (isOpen && !chatSession) {
-      initChat();
+    if (messages.length === 0) {
+      setMessages([{
+        id: 'welcome',
+        role: 'model',
+        text: t('chatbot_welcome')
+      }]);
     }
-  }, [isOpen]);
+  }, [t]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOpen]);
 
-  const initChat = async () => {
-    try {
-      // Use the injected API key from process.env as per requirements
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
-      // Prepare simplified data for context
-      const simplifiedRecords = records.map(r => ({
-        date: r.date,
-        type: r.type,
-        name: r.name,
-        action: r.action,
-        amount: r.amount,
-        status: r.status,
-        remarks: r.remarks
-      }));
-
-      const systemInstruction = `
-        You are a helpful financial assistant for 'My Asset'.
-        
-        **User Data**:
-        ${JSON.stringify(simplifiedRecords)}
-        
-        **Directives**:
-        1. **Be Direct**: Answer the user's question immediately.
-        2. **Portfolio Context**: Use the provided user data to answer questions about net worth, specific asset types, or transaction history.
-        3. **Formatting**: 
-           - Use **bold** for currency (e.g., **RM 1,200**).
-           - Use bullet points for lists.
-        4. **Logic**: Only count 'Active' assets for current totals unless asked otherwise.
-      `;
-
-      const chat = ai.chats.create({
-        model: 'gemini-3-flash-preview',
-        config: {
-          systemInstruction: systemInstruction,
-        },
-      });
-
-      setChatSession(chat);
-      setMessages([{
-        id: 'welcome',
-        role: 'model',
-        text: t('chatbot_welcome')
-      }]);
-
-    } catch (error) {
-      console.error("Failed to init chat:", error);
-      setMessages(prev => [...prev, {
-        id: 'error-init',
-        role: 'model',
-        text: t('chatbot_error'),
-        isError: true
-      }]);
-    }
-  };
-
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!inputText.trim() || !chatSession || isLoading) return;
+    if (!inputText.trim() || isLoading) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -106,33 +53,77 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
       text: inputText
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInputText('');
     setIsLoading(true);
 
     try {
-      const result = await chatSession.sendMessageStream({ message: userMsg.text });
+      // 1. Create a fresh instance right before the call as per guidelines
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
+      // 2. Build the system context with the LATEST records
+      const activeAssets = records.filter(r => r.status === 'Active');
+      const simplifiedRecords = activeAssets.map(r => ({
+        type: r.type,
+        name: r.name,
+        action: r.action,
+        amount: r.amount,
+        remarks: r.remarks
+      }));
+
+      const systemInstruction = `
+        You are a helpful financial assistant for 'My Asset'.
+        Current active portfolio data: ${JSON.stringify(simplifiedRecords)}.
+        Directives: Answer clearly, use bold for currency (e.g., **RM 1,200**), use bullet points for lists.
+        If the user asks about net worth, calculate it from the provided data.
+      `;
+
+      // 3. Prepare the conversation history for the model
+      // We skip the welcome message for the model history to focus on the active exchange
+      const contents = newMessages
+        .filter(m => m.id !== 'welcome')
+        .map(m => ({
+          role: m.role,
+          parts: [{ text: m.text }]
+        }));
+
+      // 4. Request streaming content
+      const responseStream = await ai.models.generateContentStream({
+        model: 'gemini-3-flash-preview',
+        contents: contents,
+        config: {
+          systemInstruction: systemInstruction,
+          temperature: 0.7,
+        },
+      });
+
       const botMsgId = (Date.now() + 1).toString();
       setMessages(prev => [...prev, { id: botMsgId, role: 'model', text: '' }]);
 
       let fullText = '';
-      for await (const chunk of result) {
+      for await (const chunk of responseStream) {
         // Access .text property directly (not as a method)
-        const text = (chunk as GenerateContentResponse).text;
-        if (text) {
-          fullText += text;
+        const chunkText = (chunk as GenerateContentResponse).text;
+        if (chunkText) {
+          fullText += chunkText;
           setMessages(prev => 
             prev.map(msg => msg.id === botMsgId ? { ...msg, text: fullText } : msg)
           );
         }
       }
-    } catch (error) {
-      console.error("Chat error:", error);
+    } catch (error: any) {
+      console.error("Gemini AI Error:", error);
+      
+      // More descriptive error for the user to help debug Netlify config
+      const errorMessage = error?.message?.includes('API_KEY') 
+        ? "API Key is missing or invalid. Please check your environment variables."
+        : t('chatbot_error');
+
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'model',
-        text: t('chatbot_error'),
+        text: errorMessage,
         isError: true
       }]);
     } finally {
@@ -174,100 +165,138 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   return (
     <>
+      <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-[45]" />
+      
       <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        drag
+        dragConstraints={constraintsRef}
+        dragElastic={0.1}
+        dragMomentum={false}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9, cursor: 'grabbing' }}
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-full shadow-lg shadow-blue-900/30 flex items-center justify-center transition-all"
+        className="fixed bottom-6 right-6 z-[60] p-4 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-full shadow-2xl shadow-blue-500/40 flex items-center justify-center cursor-grab pointer-events-auto border-2 border-white/20 backdrop-blur-md"
       >
-        {isOpen ? <X size={24} /> : <Sparkles size={24} />}
+        <AnimatePresence mode="wait">
+          {isOpen ? (
+            <motion.div
+              key="close"
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              exit={{ rotate: 90, opacity: 0 }}
+            >
+              <X size={24} />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="sparkle"
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 1.5, opacity: 0 }}
+            >
+              <Sparkles size={24} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.button>
 
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-6 z-50 w-full max-w-[400px] h-[600px] max-h-[80vh] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden"
+            initial={{ x: '100%', opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: '100%', opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed top-0 right-0 z-[55] w-full sm:w-[450px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800"
           >
-            <div className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex justify-between items-center shrink-0">
-              <div className="flex items-center gap-2">
-                <Bot size={20} />
-                <h3 className="font-semibold">{t('chatbot_title')}</h3>
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-70" />
+            
+            <div className="px-6 py-5 bg-white dark:bg-slate-900 flex justify-between items-center shrink-0 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-xl text-blue-600 dark:text-blue-400">
+                  <Bot size={22} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100">{t('chatbot_title')}</h3>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Gemini 3 Pro</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <button 
                   onClick={() => {
-                    setMessages([]);
-                    setChatSession(null);
-                    initChat();
+                    setMessages([{ id: 'welcome', role: 'model', text: t('chatbot_welcome') }]);
                   }}
                   title="Reset Chat"
-                  className="p-1 hover:bg-white/20 rounded transition-colors"
+                  className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-all"
                 >
-                  <RefreshCcw size={16} />
+                  <RefreshCcw size={18} />
                 </button>
                 <button 
                   onClick={() => setIsOpen(false)}
-                  className="p-1 hover:bg-white/20 rounded transition-colors"
+                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-all sm:hidden"
                 >
-                  <Minimize2 size={16} />
+                  <ChevronRight size={24} />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 dark:bg-slate-950/50">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 dark:bg-slate-950/20 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
               {messages.map((msg) => (
-                <div
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
                   key={msg.id}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] p-3 rounded-2xl text-sm ${
+                    className={`max-w-[90%] p-4 rounded-2xl text-sm leading-relaxed ${
                       msg.role === 'user'
-                        ? 'bg-blue-600 text-white rounded-br-none'
+                        ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 rounded-tr-none'
                         : msg.isError 
-                            ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-bl-none'
-                            : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-700 rounded-bl-none'
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-tl-none'
+                            : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-700 rounded-tl-none'
                     }`}
                   >
                     {formatMessage(msg.text)}
                   </div>
-                </div>
+                </motion.div>
               ))}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-white dark:bg-slate-800 p-3 rounded-2xl rounded-bl-none shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-                    <Loader2 size={14} className="animate-spin" />
-                    {t('chatbot_thinking')}
+                  <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none shadow-sm border border-slate-100 dark:border-slate-700 flex items-center gap-3 text-slate-500 dark:text-slate-400 text-sm">
+                    <Loader2 size={16} className="animate-spin text-blue-500" />
+                    <span className="animate-pulse">{t('chatbot_thinking')}</span>
                   </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleSendMessage} className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
-              <div className="relative flex items-center gap-2">
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder={t('chatbot_input_placeholder')}
-                  className="w-full pl-4 pr-12 py-3 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder-slate-400"
-                  disabled={isLoading}
-                />
-                <button
-                  type="submit"
-                  disabled={!inputText.trim() || isLoading}
-                  className="absolute right-2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <Send size={16} />
-                </button>
-              </div>
-            </form>
+            <div className="p-6 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0 mb-safe">
+              <form onSubmit={handleSendMessage} className="relative flex items-center gap-3">
+                <div className="relative flex-1 group">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder={t('chatbot_input_placeholder')}
+                    className="w-full pl-4 pr-12 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-slate-400 text-sm group-hover:border-slate-300 dark:group-hover:border-slate-600"
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!inputText.trim() || isLoading}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-blue-500/30"
+                  >
+                    <Send size={18} />
+                  </button>
+                </div>
+              </form>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
