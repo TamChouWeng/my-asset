@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { X, Send, Bot, Loader2, Sparkles, RefreshCcw, ChevronRight } from 'lucide-react';
+import { X, Send, Bot, Loader2, Sparkles, RefreshCcw, ChevronRight, Key } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AssetRecord } from '../types';
 
@@ -43,9 +43,26 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOpen]);
 
+  const handleSelectKey = async () => {
+    if (typeof window.aistudio?.openSelectKey === 'function') {
+      await window.aistudio.openSelectKey();
+    } else {
+      alert("API Key selection is not available in this environment.");
+    }
+  };
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!inputText.trim() || isLoading) return;
+
+    // 1. API Key Selection Check (Required for Pro models and Netlify reliability)
+    if (!process.env.API_KEY) {
+      const hasKey = await window.aistudio?.hasSelectedApiKey();
+      if (!hasKey) {
+        await handleSelectKey();
+        // After triggering dialog, we proceed. Guideline says assume success to avoid race conditions.
+      }
+    }
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -59,28 +76,23 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
     setIsLoading(true);
 
     try {
-      // 1. Create a fresh instance right before the call as per guidelines
+      // 2. Fresh instance right before call
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
-      // 2. Build the system context with the LATEST records
       const activeAssets = records.filter(r => r.status === 'Active');
       const simplifiedRecords = activeAssets.map(r => ({
         type: r.type,
         name: r.name,
-        action: r.action,
         amount: r.amount,
         remarks: r.remarks
       }));
 
       const systemInstruction = `
         You are a helpful financial assistant for 'My Asset'.
-        Current active portfolio data: ${JSON.stringify(simplifiedRecords)}.
-        Directives: Answer clearly, use bold for currency (e.g., **RM 1,200**), use bullet points for lists.
-        If the user asks about net worth, calculate it from the provided data.
+        Current active portfolio: ${JSON.stringify(simplifiedRecords)}.
+        Provide concise, accurate financial insights. Use **bold** for currency.
       `;
 
-      // 3. Prepare the conversation history for the model
-      // We skip the welcome message for the model history to focus on the active exchange
       const contents = newMessages
         .filter(m => m.id !== 'welcome')
         .map(m => ({
@@ -88,9 +100,11 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
           parts: [{ text: m.text }]
         }));
 
-      // 4. Request streaming content
+      // 3. Request streaming using Gemini 3 Pro
+      // Removed thinkingBudget: 0 because Gemini 3 Pro requires a thinking mode budget.
+      // Letting it use defaults is the safest approach for reliability.
       const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-3-pro-preview',
         contents: contents,
         config: {
           systemInstruction: systemInstruction,
@@ -103,7 +117,6 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
       let fullText = '';
       for await (const chunk of responseStream) {
-        // Access .text property directly (not as a method)
         const chunkText = (chunk as GenerateContentResponse).text;
         if (chunkText) {
           fullText += chunkText;
@@ -115,17 +128,23 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
     } catch (error: any) {
       console.error("Gemini AI Error:", error);
       
-      // More descriptive error for the user to help debug Netlify config
-      const errorMessage = error?.message?.includes('API_KEY') 
-        ? "API Key is missing or invalid. Please check your environment variables."
-        : t('chatbot_error');
-
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: 'model',
-        text: errorMessage,
-        isError: true
-      }]);
+      // 4. Handle invalid key or project errors
+      if (error?.message?.includes('Requested entity was not found') || error?.message?.includes('API Key')) {
+        await handleSelectKey();
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'model',
+          text: "Please select a valid API key from the dialog and try again.",
+          isError: true
+        }]);
+      } else {
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          role: 'model',
+          text: t('chatbot_error'),
+          isError: true
+        }]);
+      }
     } finally {
       setIsLoading(false);
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -179,21 +198,11 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
       >
         <AnimatePresence mode="wait">
           {isOpen ? (
-            <motion.div
-              key="close"
-              initial={{ rotate: -90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              exit={{ rotate: 90, opacity: 0 }}
-            >
+            <motion.div key="close" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}>
               <X size={24} />
             </motion.div>
           ) : (
-            <motion.div
-              key="sparkle"
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 1.5, opacity: 0 }}
-            >
+            <motion.div key="sparkle" initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 1.5, opacity: 0 }}>
               <Sparkles size={24} />
             </motion.div>
           )}
@@ -224,11 +233,16 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <button 
-                  onClick={() => {
-                    setMessages([{ id: 'welcome', role: 'model', text: t('chatbot_welcome') }]);
-                  }}
+                  onClick={handleSelectKey}
+                  title="Configure API Key"
+                  className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-all"
+                >
+                  <Key size={18} />
+                </button>
+                <button 
+                  onClick={() => setMessages([{ id: 'welcome', role: 'model', text: t('chatbot_welcome') }])}
                   title="Reset Chat"
                   className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-all"
                 >
@@ -236,14 +250,14 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
                 </button>
                 <button 
                   onClick={() => setIsOpen(false)}
-                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-all sm:hidden"
+                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-all"
                 >
                   <ChevronRight size={24} />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 dark:bg-slate-950/20 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 dark:bg-slate-950/20 scrollbar-thin">
               {messages.map((msg) => (
                 <motion.div
                   initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -284,7 +298,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     placeholder={t('chatbot_input_placeholder')}
-                    className="w-full pl-4 pr-12 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-slate-400 text-sm group-hover:border-slate-300 dark:group-hover:border-slate-600"
+                    className="w-full pl-4 pr-12 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder-slate-400 text-sm"
                     disabled={isLoading}
                   />
                   <button
@@ -296,6 +310,10 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
                   </button>
                 </div>
               </form>
+              <div className="mt-2 text-[9px] text-center text-slate-400 flex justify-center items-center gap-1">
+                <span>Requires Billing Project API Key</span>
+                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-blue-500 underline">Docs</a>
+              </div>
             </div>
           </motion.div>
         )}
