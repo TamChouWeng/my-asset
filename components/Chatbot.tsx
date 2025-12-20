@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { X, Send, Bot, Loader2, Sparkles, RefreshCcw, ChevronRight, Key } from 'lucide-react';
+import { X, Send, Bot, Loader2, Sparkles, RefreshCcw, ChevronRight, Key, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AssetRecord } from '../types';
 
@@ -43,40 +43,40 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isOpen]);
 
-  const handleSelectKey = async () => {
-    if (typeof window.aistudio?.openSelectKey === 'function') {
+  const handleOpenSelectKey = async () => {
+    if (window.aistudio?.openSelectKey) {
       await window.aistudio.openSelectKey();
     } else {
-      alert("API Key selection is not available in this environment.");
+      console.warn("API Key picker not available");
     }
   };
 
-  const handleSendMessage = async (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent, customText?: string) => {
     e?.preventDefault();
-    if (!inputText.trim() || isLoading) return;
+    const textToSearch = customText || inputText;
+    if (!textToSearch.trim() || isLoading) return;
 
-    // 1. API Key Selection Check (Required for Pro models and Netlify reliability)
+    // Check if key is present before starting
     if (!process.env.API_KEY) {
       const hasKey = await window.aistudio?.hasSelectedApiKey();
       if (!hasKey) {
-        await handleSelectKey();
-        // After triggering dialog, we proceed. Guideline says assume success to avoid race conditions.
+        await handleOpenSelectKey();
+        // Proceed as per guideline (assume success)
       }
     }
 
     const userMsg: Message = {
       id: Date.now().toString(),
       role: 'user',
-      text: inputText
+      text: textToSearch
     };
 
-    const newMessages = [...messages, userMsg];
-    setMessages(newMessages);
-    setInputText('');
+    setMessages(prev => [...prev, userMsg]);
+    if (!customText) setInputText('');
     setIsLoading(true);
 
     try {
-      // 2. Fresh instance right before call
+      // Fresh instance right before the call to get the latest key
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       const activeAssets = records.filter(r => r.status === 'Active');
@@ -84,28 +84,37 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
         type: r.type,
         name: r.name,
         amount: r.amount,
+        action: r.action,
         remarks: r.remarks
       }));
 
       const systemInstruction = `
-        You are a helpful financial assistant for 'My Asset'.
-        Current active portfolio: ${JSON.stringify(simplifiedRecords)}.
-        Provide concise, accurate financial insights. Use **bold** for currency.
+        You are a world-class financial assistant for the 'My Asset' application.
+        Your goal is to provide helpful, professional, and clear financial analysis of the user's portfolio.
+        
+        Current active portfolio data: ${JSON.stringify(simplifiedRecords)}.
+        Total Net Worth: RM ${activeAssets.reduce((sum, r) => sum + r.amount, 0).toLocaleString()}
+        
+        Guidelines:
+        - Be concise but thorough.
+        - Use Markdown for formatting.
+        - Bold currencies (e.g., **RM 1,234.56**).
+        - If asked about specific asset types (like Property or FD), focus your analysis there.
+        - Encourage smart saving and diversification.
       `;
 
-      const contents = newMessages
-        .filter(m => m.id !== 'welcome')
+      // Filter and map history correctly for Gemini (user/model alternating)
+      // Only send history that is not an error message
+      const chatHistory = [...messages, userMsg]
+        .filter(m => m.id !== 'welcome' && !m.isError)
         .map(m => ({
           role: m.role,
           parts: [{ text: m.text }]
         }));
 
-      // 3. Request streaming using Gemini 3 Pro
-      // Removed thinkingBudget: 0 because Gemini 3 Pro requires a thinking mode budget.
-      // Letting it use defaults is the safest approach for reliability.
       const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3-pro-preview',
-        contents: contents,
+        model: 'gemini-3-flash-preview', // Switched to flash for speed and reliability
+        contents: chatHistory,
         config: {
           systemInstruction: systemInstruction,
           temperature: 0.7,
@@ -117,7 +126,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
       let fullText = '';
       for await (const chunk of responseStream) {
-        const chunkText = (chunk as GenerateContentResponse).text;
+        const chunkText = chunk.text;
         if (chunkText) {
           fullText += chunkText;
           setMessages(prev => 
@@ -128,20 +137,22 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
     } catch (error: any) {
       console.error("Gemini AI Error:", error);
       
-      // 4. Handle invalid key or project errors
-      if (error?.message?.includes('Requested entity was not found') || error?.message?.includes('API Key')) {
-        await handleSelectKey();
+      const errorMessage = error?.message || "";
+      
+      if (errorMessage.includes("API Key") || errorMessage.includes("Requested entity was not found")) {
+        // Reset and prompt for key as per guideline
+        await handleOpenSelectKey();
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
           role: 'model',
-          text: "Please select a valid API key from the dialog and try again.",
+          text: "I need a valid API key to process your request. I've opened the selection dialog. Please choose a paid project and try again.",
           isError: true
         }]);
       } else {
         setMessages(prev => [...prev, {
           id: Date.now().toString(),
           role: 'model',
-          text: t('chatbot_error'),
+          text: t('chatbot_error') || "I'm sorry, I encountered an error. Please try again later.",
           isError: true
         }]);
       }
@@ -152,11 +163,14 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
   };
 
   const formatMessage = (text: string) => {
+    if (!text) return null;
+    
     const lines = text.split('\n');
     return lines.map((line, i) => {
       const isListItem = line.trim().startsWith('* ') || line.trim().startsWith('- ');
       const content = isListItem ? line.trim().substring(2) : line;
       
+      // Basic bold formatting support
       const parts = content.split(/(\*\*.*?\*\*)/g);
       const formattedContent = parts.map((part, index) => {
         if (part.startsWith('**') && part.endsWith('**')) {
@@ -168,7 +182,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
       if (isListItem) {
         return (
           <div key={i} className="flex items-start gap-2 ml-1 mb-1">
-            <span className="text-blue-500 mt-1.5 text-[10px]">•</span>
+            <span className="text-blue-500 mt-1.5 text-[10px] shrink-0">•</span>
             <span className="flex-1">{formattedContent}</span>
           </div>
         );
@@ -229,13 +243,13 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
                   <h3 className="font-bold text-slate-900 dark:text-slate-100">{t('chatbot_title')}</h3>
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                    <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Gemini 3 Pro</span>
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400">Gemini 3 Flash</span>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 <button 
-                  onClick={handleSelectKey}
+                  onClick={handleOpenSelectKey}
                   title="Configure API Key"
                   className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-all"
                 >
@@ -250,7 +264,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
                 </button>
                 <button 
                   onClick={() => setIsOpen(false)}
-                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-all"
+                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-500/10 rounded-full transition-all"
                 >
                   <ChevronRight size={24} />
                 </button>
@@ -270,11 +284,27 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
                       msg.role === 'user'
                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 rounded-tr-none'
                         : msg.isError 
-                            ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-tl-none'
+                            ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-tl-none border border-red-200'
                             : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-700 rounded-tl-none'
                     }`}
                   >
                     {formatMessage(msg.text)}
+                    {msg.id === 'welcome' && (
+                       <div className="mt-4 flex flex-wrap gap-2">
+                          <button 
+                             onClick={() => handleSendMessage(undefined, "Analyze my assets")}
+                             className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-xs hover:bg-blue-100 transition-colors"
+                          >
+                             Analyze my assets
+                          </button>
+                          <button 
+                             onClick={() => handleSendMessage(undefined, "How is my property performing?")}
+                             className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs hover:bg-emerald-100 transition-colors"
+                          >
+                             Property performance
+                          </button>
+                       </div>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -310,9 +340,10 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
                   </button>
                 </div>
               </form>
-              <div className="mt-2 text-[9px] text-center text-slate-400 flex justify-center items-center gap-1">
-                <span>Requires Billing Project API Key</span>
-                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-blue-500 underline">Docs</a>
+              <div className="mt-3 flex items-center justify-center gap-2 text-[10px] text-slate-400 bg-slate-50 dark:bg-slate-800/50 py-1.5 rounded-lg border border-slate-100 dark:border-slate-700">
+                <Info size={12} className="text-blue-500" />
+                <span>Requires Paid Billing API Key</span>
+                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-blue-500 font-semibold hover:underline">Docs</a>
               </div>
             </div>
           </motion.div>
