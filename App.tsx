@@ -1556,7 +1556,7 @@ function App() {
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md p-6 border border-slate-200 dark:border-slate-800 relative z-10"
+                className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-md p-6 border border-slate-200 dark:border-slate-800 relative z-10"
              >
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Change Password</h3>
@@ -1570,7 +1570,7 @@ function App() {
                         type="password"
                         required
                         value={currentPassword}
-                        onChange={(e) => currentPassword(e.target.value)}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
                         className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="••••••••"
                       />
