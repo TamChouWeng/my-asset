@@ -45,7 +45,8 @@ import {
   ChevronDown,
   ChevronUp,
   Landmark,
-  PiggyBank
+  PiggyBank,
+  Upload
 } from 'lucide-react';
 
 // --- Helper Functions for Data Parsing ---
@@ -854,21 +855,29 @@ function App() {
               </div>
 
               {view !== 'settings' && (
-                <div className="flex gap-3 w-full md:w-auto">
+                <div className="flex gap-2 w-full md:w-auto">
                   <button
                     onClick={() => downloadCSV(currencyRecords)}
-                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:scale-105 active:scale-95"
+                    title={t('btn_export')}
+                    className="w-10 h-10 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:scale-105 active:scale-95"
                   >
-                    <Download size={18} />
-                    <span className="hidden md:inline">{t('btn_export')}</span>
-                    <span className="md:hidden">CSV</span>
+                    <Download size={20} />
                   </button>
+
+                  <button
+                    onClick={() => { /* Import logic to be added */ }}
+                    title="Import CSV"
+                    className="w-10 h-10 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <Upload size={20} />
+                  </button>
+
                   <button
                     onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
-                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-900/30 transition-all hover:scale-105 active:scale-95"
+                    title={t('btn_add')}
+                    className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-900/30 transition-all hover:scale-105 active:scale-95"
                   >
-                    <Plus size={18} />
-                    {t('btn_add')}
+                    <Plus size={20} />
                   </button>
                 </div>
               )}
