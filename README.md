@@ -6,59 +6,86 @@
 
 ## 🚀 Features
 
-### 1. Asset Tracking
-- **Comprehensive Support:** Track Stocks, Fixed Deposits, EPF, Property, REITs, and custom assets.
-- **CRUD Operations:** Easily create, read, update, and delete records.
-- **Batch Operations:** Select multiple records to delete in bulk.
+### 1. Asset Management (CRUD)
+- **Multi-Asset Support:** Full tracking support for:
+    - **Stocks** (Buy/Sold/Dividend)
+    - **Fixed Deposits** (Auto-interest calculation upon maturity)
+    - **EPF** (Self/Employee contributions)
+    - **Property** (Rental/Maintenance/Renovation tracking)
+    - **Custom Assets** (Gold, etc.)
+- **Advanced Form Validation:** Smart forms that adapt fields based on asset type (e.g., Interest Rate & Maturity Date for FDs).
+- **Auto-Calculations:**
+    - Fixed Deposit Interest: Automatically calculated based on Principal, Rate, and Duration.
+    - Total Amount: Automatically computed from Unit Price × Quantity.
+- **Batch Operations:** Efficiently delete multiple records at once.
 
-### 2. Dashboard & Analytics
-- **Visual Overview:** Interactive pie charts showing asset allocation.
-- **Key Metrics:** Real-time calculation of Total Net Worth, Top Asset Classes, and Total Active Records.
-- **Mobile First:** Fully responsive design that works perfectly on Desktop, Tablet, and Mobile.
+### 2. Dashboard & Visualization
+- **Real-time Metrics:**
+    - **Total Net Worth** (Live aggregation)
+    - **Top Asset Class** breakdown
+- **Interactive Charts:** Dynamic Pie Charts visualization of asset allocation.
+- **Responsive Design:**
+    - Mobile-responsive Sidebar (Collapsible/Expandable).
+    - Mobile-first Data Lists/Cards.
+    - Dark/Light mode synchronization with system or user preference.
 
-### 3. Property Analysis
-- **Cash Flow Tracking:** dedicated module for property investments.
-- **ROI Calculation:** Automatically compares Total Invested (Outflow) vs Total Returned (Rent/Income).
-- **Visualization:** Progress bars indicating investment recovery and profit phases.
+### 3. Property Portfolio Intelligence
+- **Dedicated Property View:** Filter and sort specific property records.
+- **Cash Flow Engine:**
+    - **Inflow:** Rent/Sold
+    - **Outflow:** Pay/Maintenance/Renovation
+    - **Net Cash Flow:** Automatic calculation of ROI and Profit/Loss per property.
 
 ### 4. AI Financial Assistant
-- **Powered by Gemini 2.5:** Ask questions about your portfolio in natural language.
-- **Context Aware:** The AI understands your specific data context to provide relevant answers.
+- **Gemini 3 Flash Integration:**
+    - Use natural language to query your portfolio ("How is my property performing?").
+    - Context-aware answers based on your **active** assets.
+    - Markdown-formatted responses (Bold text, Lists).
+- **Security:** API Key configuration support for personal billing keys.
 
-### 5. Robust Backend (Supabase)
-- **Authentication:** Secure Email/Password login.
-- **Row Level Security (RLS):** Data is isolated per user at the database level.
-- **Cloud Database:** All data is stored in PostgreSQL.
-- **Audit Logs:** (Mature Feature) Immutable tracking of all system changes, viewable in Settings.
+### 5. Fixed Deposit (FD) Management
+- **Maturity Check:**
+    - `Active` vs `Mature` status tracking.
+    - Auto-calculation of simple interest upon maturity.
+- **Search & Filter:** specific search bar for FD records.
 
-### 6. User Preferences
-- **Themes:** Toggle between Light and Dark mode.
-- **Multi-language:** Support for English, Chinese (Simplified), and Malay.
-- **Profile Management:** Update passwords and customize experience.
+### 6. System & Security
+- **Authentication:** Supabase Email/Password Auth.
+- **User Profile:**
+    - Multi-language Support (English, Chinese Simplified, Malay).
+    - Theme switching (Light/Dark).
+    - Password updates.
+- **Data Protection:**
+    - Row Level Security (RLS) ensures strict user data isolation.
+    - Secure environment variable handling.
 
 ## 🛠 Tech Stack
 
-- **Frontend:** React 18, TypeScript, Tailwind CSS, Framer Motion, Recharts
-- **Backend:** Supabase (PostgreSQL, Auth, Edge Functions)
-- **AI:** Google Gemini API
+- **Frontend:** React 18, TypeScript, Tailwind CSS, Framer Motion
+- **Charts:** Recharts
+- **Icons:** Lucide React
+- **Backend:** Supabase (Table Database, Auth, RLS)
+- **AI:** Google GenAI SDK (Gemini 3 Flash)
 - **Build Tool:** Vite
-- **Hosting:** Netlify
+- **Deployment:** GitHub Actions -> GitHub Pages / Netlify
 
 ## 📦 Setup Instructions
 
 1. **Clone the repository**
 2. **Install Dependencies:** `npm install`
 3. **Environment Variables:**
-   Create a `.env` file (or set in Netlify) with:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-   - `VITE_GEMINI_API_KEY`
+   Create a `.env` file with:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   VITE_GEMINI_API_KEY=your_gemini_key (Optional)
+   ```
 4. **Run Locally:** `npm run dev`
 
 ## 🔒 Security
 
-- **RLS Policies:** Ensures users can only access their own records.
-- **Audit Logging:** Database triggers capture every `INSERT`, `UPDATE`, and `DELETE` operation for compliance.
+- **RLS Policies:** Database-level security ensuring users can strictly access only their `user_id` rows.
+- **Encrypted Auth:** Supabase handles secure session management.
 
 ---
 *My Asset - Manage your wealth effectively.*
