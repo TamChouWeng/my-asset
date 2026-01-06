@@ -1,6 +1,7 @@
 export enum AssetType {
   FixedDeposit = 'Fixed Deposit',
   Stock = 'Stock',
+  ETF = 'ETF',
   REIT = 'REIT',
   Property = 'Property',
   EPF = 'EPF',

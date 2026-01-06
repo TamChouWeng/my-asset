@@ -1,8 +1,8 @@
 # My Asset - Personal Wealth Management
-
+ 
 **My Asset** is a robust, cloud-native application designed to help you track, visualize, and manage your financial portfolio. Built with React and Supabase, it offers enterprise-grade data security, real-time synchronization, and AI-powered insights.
 
-**Current Version:** Beta 1.2
+**Current Version:** Beta 2.1
 
 > **Note:** This build is fully compatible and optimized for hosting on **GitHub Pages**.
 
@@ -11,6 +11,7 @@
 ### 1. Asset Management (CRUD)
 - **Multi-Asset Support:** Full tracking support for:
     - **Stocks** (Buy/Sold/Dividend)
+    - **ETF** (Buy/Sold/Dividend) - *New in Beta 2.1*
     - **Fixed Deposits** (Auto-interest calculation upon maturity)
     - **EPF** (Self/Employee contributions)
     - **Property** (Rental/Maintenance/Renovation tracking)
@@ -22,6 +23,9 @@
 - **Batch Operations:** Efficiently delete multiple records at once.
 
 ### 2. Dashboard & Visualization
+- **Global Currency Filtering:** *New in Beta 2.0*
+    - Toggle between **MYR** and **USD** in Settings.
+    - All charts, lists, and summaries instantly reflect the selected currency.
 - **Real-time Metrics:**
     - **Total Net Worth** (Live aggregation)
     - **Top Asset Class** breakdown

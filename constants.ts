@@ -2,6 +2,7 @@ import { AssetType } from './types';
 
 export const COLORS: Record<AssetType, string> = {
   [AssetType.Stock]: '#3b82f6', // blue-500
+  [AssetType.ETF]: '#06b6d4', // cyan-500
   [AssetType.FixedDeposit]: '#10b981', // emerald-500
   [AssetType.EPF]: '#8b5cf6', // violet-500
   [AssetType.REIT]: '#f59e0b', // amber-500
@@ -41,7 +42,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'nav_fixed_deposit': 'Fixed Deposit',
     'nav_records': 'Records List',
     'nav_settings': 'Settings',
-    
+
     // Header/Titles
     'title_dashboard': 'Overview',
     'title_property': 'Property Analysis',
@@ -50,7 +51,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'title_settings': 'Settings',
     'subtitle_dashboard': 'Manage your wealth effectively',
     'subtitle_settings': 'Customize your application experience',
-    
+
     // Buttons
     'btn_export': 'Export CSV',
     'btn_add': 'Add Record',
@@ -71,7 +72,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'chart_breakdown': 'Breakdown',
     'chart_no_data': 'No active assets to display for this category',
     'recent_activity': 'Recent Activity',
-    
+
     // Property Analysis
     'prop_cash_flow': 'Property Cash Flow',
     'prop_desc': 'Installments vs. Rental Income',
@@ -82,7 +83,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'prop_investment_phase': 'Investment Phase',
     'prop_recovered': 'Recovered',
     'prop_profit_phase': 'Profit Phase',
-    
+
     // Table Headers
     'table_date': 'Date',
     'table_type': 'Type',
@@ -119,7 +120,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'nav_fixed_deposit': '定期存款',
     'nav_records': '记录列表',
     'nav_settings': '设置',
-    
+
     'title_dashboard': '概览',
     'title_property': '房产分析',
     'title_fixed_deposit': '定期存款组合',
@@ -127,7 +128,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'title_settings': '设置',
     'subtitle_dashboard': '有效管理您的财富',
     'subtitle_settings': '自定义您的应用体验',
-    
+
     'btn_export': '导出 CSV',
     'btn_add': '添加记录',
     'btn_cancel': '取消',
@@ -145,7 +146,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'chart_breakdown': '细分',
     'chart_no_data': '此类别无活跃资产显示',
     'recent_activity': '近期活动',
-    
+
     'prop_cash_flow': '房产现金流',
     'prop_desc': '分期付款 vs 租金收入',
     'prop_invested': '总投资 (流出)',
@@ -155,7 +156,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'prop_investment_phase': '投资阶段',
     'prop_recovered': '已回收',
     'prop_profit_phase': '盈利阶段',
-    
+
     'table_date': '日期',
     'table_type': '类型',
     'table_name': '名称',
@@ -189,7 +190,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'nav_fixed_deposit': 'Simpanan Tetap',
     'nav_records': 'Senarai Rekod',
     'nav_settings': 'Tetapan',
-    
+
     'title_dashboard': 'Gambaran Keseluruhan',
     'title_property': 'Analisis Hartanah',
     'title_fixed_deposit': 'Portfolio Simpanan Tetap',
@@ -197,7 +198,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'title_settings': 'Tetapan',
     'subtitle_dashboard': 'Urus kekayaan anda dengan berkesan',
     'subtitle_settings': 'Sesuaikan pengalaman aplikasi anda',
-    
+
     'btn_export': 'Eksport CSV',
     'btn_add': 'Tambah Rekod',
     'btn_cancel': 'Batal',
@@ -215,7 +216,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'chart_breakdown': 'Pecahan',
     'chart_no_data': 'Tiada aset aktif untuk dipaparkan',
     'recent_activity': 'Aktiviti Terkini',
-    
+
     'prop_cash_flow': 'Aliran Tunai Hartanah',
     'prop_desc': 'Ansuran vs Pendapatan Sewa',
     'prop_invested': 'Jumlah Dilaburkan (Keluar)',
@@ -225,7 +226,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'prop_investment_phase': 'Fasa Pelaburan',
     'prop_recovered': 'Dipulihkan',
     'prop_profit_phase': 'Fasa Keuntungan',
-    
+
     'table_date': 'Tarikh',
     'table_type': 'Jenis',
     'table_name': 'Nama',

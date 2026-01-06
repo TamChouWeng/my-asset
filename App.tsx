@@ -1464,7 +1464,6 @@ function App() {
                       Preferences
                     </h3>
                   </div>
-
                   <div className="p-6 space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -1575,7 +1574,7 @@ function App() {
                 </div>
 
                 <div className="text-center pt-4 pb-8 text-slate-400 dark:text-slate-600 text-xs">
-                  Version: Beta 2.0
+                  Version: Beta 2.1
                 </div>
               </motion.div>
             )}
