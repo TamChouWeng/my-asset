@@ -131,7 +131,7 @@ function App() {
   const [passwordLoading, setPasswordLoading] = useState(false);
 
   // Import State
-  const [importCandidates, setImportCandidates] = useState<AssetRecord[]>([]);
+  const [importCandidates, setImportCandidates] = useState<(AssetRecord & { isDuplicate?: boolean })[]>([]);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -379,7 +379,19 @@ function App() {
         alert("No valid records found in the CSV file.");
         return;
       }
-      setImportCandidates(candidates);
+
+      // Check for duplicates
+      // A duplicate is defined by matching Date, Name, Type, Action, Amount, (Currency is implicit in checks)
+      const existingSignatures = new Set(records.map(r =>
+        `${r.date}|${r.name}|${r.type}|${r.action}|${r.amount}|${r.currency || 'MYR'}`
+      ));
+
+      const markedCandidates = candidates.map(c => ({
+        ...c,
+        isDuplicate: existingSignatures.has(`${c.date}|${c.name}|${c.type}|${c.action}|${c.amount}|${c.currency || 'MYR'}`)
+      }));
+
+      setImportCandidates(markedCandidates);
       setIsImportModalOpen(true);
     } catch (error: any) {
       console.error("CSV Parse Error:", error);
@@ -425,6 +437,10 @@ function App() {
     } finally {
       setIsImporting(false);
     }
+  };
+
+  const handleRemoveDuplicates = () => {
+    setImportCandidates(prev => prev.filter(c => !c.isDuplicate));
   };
 
   const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -1754,6 +1770,7 @@ function App() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onConfirm={handleConfirmImport}
+        onRemoveDuplicates={handleRemoveDuplicates}
         candidates={importCandidates}
         isImporting={isImporting}
       />

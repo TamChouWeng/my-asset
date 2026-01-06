@@ -8,7 +8,7 @@ export const downloadCSV = (data: AssetRecord[]) => {
     'Action',
     'Unit Price',
     'Quantity',
-    'Total Amount',
+    'Amount',
     'Fee',
     'Interest/Dividend',
     'Maturity Date',
@@ -118,7 +118,7 @@ export const parseCSV = async (file: File): Promise<AssetRecord[]> => {
       action: rowObj['Action'],
       unitPrice: parseNumber(rowObj['Unit Price']),
       quantity: parseNumber(rowObj['Quantity']),
-      amount: parseAmount(rowObj['Total Amount'] || rowObj['Amount']),
+      amount: parseAmount(rowObj['Amount'] || rowObj['Total Amount']), // Support both for backward compatibility
       fee: parseNumber(rowObj['Fee']),
       interestDividend: parseNumber(rowObj['Interest/Dividend']),
       maturityDate: rowObj['Maturity Date'],

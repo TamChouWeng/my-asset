@@ -7,7 +7,8 @@ interface ImportConfirmationModalProps {
     isOpen: boolean;
     onClose: () => void;
     onConfirm: () => void;
-    candidates: AssetRecord[];
+    onRemoveDuplicates?: () => void;
+    candidates: (AssetRecord & { isDuplicate?: boolean })[];
     isImporting: boolean;
 }
 
@@ -15,6 +16,7 @@ const ImportConfirmationModal: React.FC<ImportConfirmationModalProps> = ({
     isOpen,
     onClose,
     onConfirm,
+    onRemoveDuplicates,
     candidates,
     isImporting
 }) => {
@@ -32,6 +34,7 @@ const ImportConfirmationModal: React.FC<ImportConfirmationModalProps> = ({
 
         return {
             count: candidates.length,
+            duplicateCount: candidates.filter(r => r.isDuplicate).length,
             myrTotal: totalAmountMYR,
             usdTotal: totalAmountUSD,
             typesCount: types.size
@@ -70,9 +73,26 @@ const ImportConfirmationModal: React.FC<ImportConfirmationModalProps> = ({
                                 <AlertTriangle className="shrink-0 mt-0.5" size={20} />
                                 <div className="text-sm">
                                     <p className="font-semibold mb-1">Review Import Data</p>
-                                    <p>You are about to import <span className="font-bold">{summary.count}</span> records. Please valid the summary below before proceeding.</p>
+                                    <p>You are about to import <span className="font-bold">{summary.count}</span> records.</p>
                                 </div>
                             </div>
+
+                            {summary.duplicateCount > 0 && (
+                                <div className="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200">
+                                    <div className="flex items-center gap-2">
+                                        <AlertTriangle size={18} />
+                                        <span className="text-sm font-semibold">{summary.duplicateCount} Duplicate Records Found</span>
+                                    </div>
+                                    {onRemoveDuplicates && (
+                                        <button
+                                            onClick={onRemoveDuplicates}
+                                            className="text-xs font-bold underline hover:text-amber-900 dark:hover:text-amber-100"
+                                        >
+                                            Remove Duplicates
+                                        </button>
+                                    )}
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg text-center">
@@ -104,8 +124,8 @@ const ImportConfirmationModal: React.FC<ImportConfirmationModalProps> = ({
                             <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-lg border border-slate-200 dark:border-slate-800 max-h-40 overflow-y-auto">
                                 <p className="text-xs font-semibold text-slate-500 mb-2 uppercase">Preview (First 3)</p>
                                 {candidates.slice(0, 3).map((rec, idx) => (
-                                    <div key={idx} className="text-xs flex justify-between py-1 border-b border-slate-200 dark:border-slate-800 last:border-0 text-slate-600 dark:text-slate-300">
-                                        <span>{rec.date} - {rec.name}</span>
+                                    <div key={idx} className={`text-xs flex justify-between py-1 border-b border-slate-200 dark:border-slate-800 last:border-0 ${rec.isDuplicate ? 'text-amber-600 dark:text-amber-500' : 'text-slate-600 dark:text-slate-300'}`}>
+                                        <span>{rec.date} - {rec.name} {rec.isDuplicate && '(Duplicate)'}</span>
                                         <span className="font-mono">{rec.amount}</span>
                                     </div>
                                 ))}
