@@ -27,6 +27,7 @@ export interface AssetRecord {
   interestDividend?: number;
   maturityDate?: string;
   status: AssetStatus;
+  currency: string; // 'MYR' | 'USD'
   remarks?: string;
 }
 

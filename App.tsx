@@ -112,6 +112,15 @@ function App() {
   const [fdSort, setFdSort] = useState<{ key: keyof AssetRecord; direction: 'asc' | 'desc' } | null>(null);
   const [fdSearchTerm, setFdSearchTerm] = useState('');
 
+  // Global Currency Setting (Persisted in LocalStorage)
+  const [selectedCurrency, setSelectedCurrency] = useState<string>(() => {
+    return localStorage.getItem('myAsset_currency') || 'MYR';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('myAsset_currency', selectedCurrency);
+  }, [selectedCurrency]);
+
   // Password Reset State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -194,6 +203,7 @@ function App() {
             interestDividend: interestDividend,
             maturityDate: item.maturity_date || item.maturityDate,
             status: item.status,
+            currency: item.currency || 'MYR',
             remarks: item.remarks
           };
         });
@@ -246,6 +256,7 @@ function App() {
         // Removed: interest_rate, interest_dividend (Using remarks as fallback storage)
         maturity_date: data.maturityDate || null,
         status: data.status,
+        currency: data.currency,
         remarks: finalRemarks
       };
 
@@ -302,6 +313,7 @@ function App() {
             interestDividend: rInt,
             maturityDate: newRecord.maturity_date,
             status: newRecord.status,
+            currency: newRecord.currency || 'MYR',
             remarks: newRecord.remarks
           };
           const newRecords = [mappedNew, ...records];
@@ -410,12 +422,21 @@ function App() {
   }, [view, selectedProperty]);
 
   // Computed Metrics
-  const totalValue = useMemo(() => {
-    return records
+  const totalValues = useMemo(() => {
+    // Filter by Currency FIRST
+    const activeRecords = records
       .filter(r => r.status === 'Active')
       .filter(r => filterType === 'All' || r.type === filterType)
-      .reduce((acc, curr) => acc + (curr.amount || 0), 0);
-  }, [records, filterType]);
+      .filter(r => (r.currency || 'MYR') === selectedCurrency);
+
+    // Now just sum up (since they are all same currency)
+    const total = activeRecords.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+
+    return { [selectedCurrency]: total };
+  }, [records, filterType, selectedCurrency]);
+
+  // Keep existing single value for compatibility if needed (defaults to MYR sum)
+  const totalValue = totalValues['MYR'] || 0;
 
   const topAssetMetric = useMemo(() => {
     const activeRecords = records.filter(r => r.status === 'Active');
@@ -449,6 +470,7 @@ function App() {
   const propertyMetrics = useMemo(() => {
     const propertyRecords = records.filter(r =>
       r.type === AssetType.Property &&
+      (r.currency || 'MYR') === selectedCurrency &&
       (selectedProperty === 'All' || r.name === selectedProperty)
     );
 
@@ -478,7 +500,7 @@ function App() {
 
   // FD Metrics
   const fdRecords = useMemo(() => {
-    let fds = records.filter(r => r.type === AssetType.FixedDeposit);
+    let fds = records.filter(r => r.type === AssetType.FixedDeposit && (r.currency || 'MYR') === selectedCurrency);
     if (fdSearchTerm) {
       fds = fds.filter(r => r.name.toLowerCase().includes(fdSearchTerm.toLowerCase()));
     }
@@ -514,6 +536,7 @@ function App() {
     return records
       .filter(r =>
         (filterType === 'All' || r.type === filterType) &&
+        (r.currency || 'MYR') === selectedCurrency &&
         (r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           r.remarks?.toLowerCase().includes(searchTerm.toLowerCase()))
       )
@@ -613,8 +636,9 @@ function App() {
     setSelectedIds(newSelected);
   };
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(val);
+  const formatCurrency = (val: number, currency: string = 'MYR') => {
+    const locale = currency === 'USD' ? 'en-US' : 'en-MY';
+    return new Intl.NumberFormat(locale, { style: 'currency', currency: currency }).format(val);
   };
 
   const containerVariants = {
@@ -756,9 +780,18 @@ function App() {
           >
             <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-4 border border-slate-200 dark:border-slate-700 whitespace-nowrap transition-colors">
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('stat_net_worth')}</p>
-              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">
-                {formatCurrency(totalValue)}
-              </p>
+              <div className="flex flex-col gap-1">
+                {Object.entries(totalValues).map(([curr, val]) => (
+                  <p key={curr} className="text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">
+                    {formatCurrency(Number(val), curr)}
+                  </p>
+                ))}
+                {Object.keys(totalValues).length === 0 && (
+                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 truncate">
+                    {formatCurrency(0, 'MYR')}
+                  </p>
+                )}
+              </div>
             </div>
           </motion.div>
         </div>
@@ -1014,8 +1047,8 @@ function App() {
                                     <td className="px-4 py-3 font-medium">{item.name}</td>
                                     <td className="px-4 py-3">
                                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${['Buy', 'Pay', 'Installment', 'Renovation'].includes(item.action)
-                                          ? 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400'
-                                          : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                        ? 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400'
+                                        : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                                         }`}>
                                         {item.action}
                                       </span>
@@ -1161,8 +1194,8 @@ function App() {
                                 <td className="px-4 py-3 text-right font-medium text-slate-900 dark:text-slate-100">{formatCurrency(item.amount)}</td>
                                 <td className="px-4 py-3">
                                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active'
-                                      ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                    ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                                     }`}>
                                     {item.status}
                                   </span>
@@ -1327,8 +1360,8 @@ function App() {
                               </td>
                               <td className="px-4 py-3">
                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active'
-                                    ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                  ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                                   }`}>
                                   {item.status}
                                 </span>
@@ -1391,8 +1424,8 @@ function App() {
                             key={i}
                             onClick={() => setCurrentPage(pageNum)}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${currentPage === pageNum
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                               }`}
                           >
                             {pageNum}
@@ -1423,6 +1456,21 @@ function App() {
                   </div>
 
                   <div className="p-6 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">Currency</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Select your preferred currency view</p>
+                      </div>
+                      <select
+                        value={selectedCurrency}
+                        onChange={(e) => setSelectedCurrency(e.target.value)}
+                        className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg p-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="MYR">MYR</option>
+                        <option value="USD">USD</option>
+                      </select>
+                    </div>
+
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium text-slate-900 dark:text-slate-100">{t('setting_theme')}</p>
@@ -1533,6 +1581,7 @@ function App() {
         onClose={() => setIsFormOpen(false)}
         onSave={handleSave}
         initialData={editingRecord}
+        defaultCurrency={selectedCurrency}
       />
 
       {/* Password Change Modal */}
