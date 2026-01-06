@@ -421,25 +421,29 @@ function App() {
     setFdSearchTerm('');
   }, [view, selectedProperty]);
 
+  // Centralized Currency Filter
+  const currencyRecords = useMemo(() => {
+    return records.filter(r => (r.currency || 'MYR') === selectedCurrency);
+  }, [records, selectedCurrency]);
+
   // Computed Metrics
   const totalValues = useMemo(() => {
     // Filter by Currency FIRST
-    const activeRecords = records
+    const activeRecords = currencyRecords
       .filter(r => r.status === 'Active')
-      .filter(r => filterType === 'All' || r.type === filterType)
-      .filter(r => (r.currency || 'MYR') === selectedCurrency);
+      .filter(r => filterType === 'All' || r.type === filterType);
 
     // Now just sum up (since they are all same currency)
     const total = activeRecords.reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
     return { [selectedCurrency]: total };
-  }, [records, filterType, selectedCurrency]);
+  }, [currencyRecords, filterType, selectedCurrency]);
 
   // Keep existing single value for compatibility if needed (defaults to MYR sum)
-  const totalValue = totalValues['MYR'] || 0;
+  const totalValue = totalValues[selectedCurrency] || 0;
 
   const topAssetMetric = useMemo(() => {
-    const activeRecords = records.filter(r => r.status === 'Active');
+    const activeRecords = currencyRecords.filter(r => r.status === 'Active');
     const map = new Map<string, number>();
 
     if (filterType === 'All') {
@@ -460,17 +464,16 @@ function App() {
     });
 
     return top;
-  }, [records, filterType]);
+  }, [currencyRecords, filterType]);
 
   const propertyNames = useMemo(() => {
-    const props = records.filter(r => r.type === AssetType.Property).map(r => r.name);
+    const props = currencyRecords.filter(r => r.type === AssetType.Property).map(r => r.name);
     return Array.from(new Set(props)).sort();
-  }, [records]);
+  }, [currencyRecords]);
 
   const propertyMetrics = useMemo(() => {
-    const propertyRecords = records.filter(r =>
+    const propertyRecords = currencyRecords.filter(r =>
       r.type === AssetType.Property &&
-      (r.currency || 'MYR') === selectedCurrency &&
       (selectedProperty === 'All' || r.name === selectedProperty)
     );
 
@@ -496,11 +499,11 @@ function App() {
       hasProperties: propertyRecords.length > 0,
       records: propertyRecords
     };
-  }, [records, selectedProperty]);
+  }, [currencyRecords, selectedProperty]);
 
   // FD Metrics
   const fdRecords = useMemo(() => {
-    let fds = records.filter(r => r.type === AssetType.FixedDeposit && (r.currency || 'MYR') === selectedCurrency);
+    let fds = currencyRecords.filter(r => r.type === AssetType.FixedDeposit);
     if (fdSearchTerm) {
       fds = fds.filter(r => r.name.toLowerCase().includes(fdSearchTerm.toLowerCase()));
     }
@@ -516,15 +519,15 @@ function App() {
       fds.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
     return fds;
-  }, [records, fdSort, fdSearchTerm]);
+  }, [currencyRecords, fdSort, fdSearchTerm]);
 
   const fdStats = useMemo(() => {
-    const activeFDs = records.filter(r => r.type === AssetType.FixedDeposit && r.status === AssetStatus.Active);
+    const activeFDs = currencyRecords.filter(r => r.type === AssetType.FixedDeposit && r.status === AssetStatus.Active);
     const principal = activeFDs.reduce((sum, r) => sum + r.amount, 0);
     // Use the on-the-fly calculated interestDividend from records state
     const interest = activeFDs.reduce((sum, r) => sum + (r.interestDividend || 0), 0);
     return { principal, interest };
-  }, [records]);
+  }, [currencyRecords]);
 
   const fdTotalPages = Math.ceil(fdRecords.length / fdRowsPerPage);
   const paginatedFdRecords = useMemo(() => {
@@ -533,15 +536,14 @@ function App() {
   }, [fdRecords, fdPage, fdRowsPerPage]);
 
   const filteredRecords = useMemo(() => {
-    return records
+    return currencyRecords
       .filter(r =>
         (filterType === 'All' || r.type === filterType) &&
-        (r.currency || 'MYR') === selectedCurrency &&
         (r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           r.remarks?.toLowerCase().includes(searchTerm.toLowerCase()))
       )
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [records, searchTerm, filterType]);
+  }, [currencyRecords, searchTerm, filterType]);
 
   const sortedRecords = useMemo(() => {
     if (!sortConfig) return filteredRecords;
@@ -876,13 +878,21 @@ function App() {
               <motion.div variants={itemVariants} className="space-y-4 h-full flex flex-col">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:min-h-[calc(100vh-7rem)]">
                   <div className="lg:col-span-3 h-full">
-                    <PieChartComponent
-                      data={records}
-                      theme={theme}
-                      t={t}
-                      filterType={filterType}
-                      onFilterChange={setFilterType}
-                    />
+                    {currencyRecords.length > 0 ? (
+                      <PieChartComponent
+                        data={currencyRecords}
+                        theme={theme}
+                        t={t}
+                        filterType={filterType}
+                        onFilterChange={setFilterType}
+                      />
+                    ) : (
+                      <div className="h-full flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 text-slate-400">
+                        <Wallet size={48} className="mb-4 opacity-50" />
+                        <p className="text-lg font-medium">No {selectedCurrency} assets found</p>
+                        <p className="text-sm">Add a new asset to see your portfolio breakdown.</p>
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col gap-4 h-full">
                     <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-1">
@@ -893,7 +903,7 @@ function App() {
                         <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">
                           {filterType === 'All' ? t('stat_total_assets') : `Total ${filterType}`}
                         </p>
-                        <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{formatCurrency(totalValue)}</p>
+                        <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{formatCurrency(totalValue, selectedCurrency)}</p>
                       </div>
                     </motion.div>
 
@@ -906,7 +916,7 @@ function App() {
                           {filterType === 'All' ? t('stat_top_asset') : `Top ${filterType} Asset`}
                         </p>
                         <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{topAssetMetric.name}</p>
-                        <p className="text-xs text-slate-500 truncate">{formatCurrency(topAssetMetric.value)}</p>
+                        <p className="text-xs text-slate-500 truncate">{formatCurrency(topAssetMetric.value, selectedCurrency)}</p>
                       </div>
                     </motion.div>
 
@@ -916,7 +926,7 @@ function App() {
                       </div>
                       <div className="min-w-0 w-full">
                         <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">{t('stat_total_records')}</p>
-                        <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{records.length}</p>
+                        <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{currencyRecords.length}</p>
                       </div>
                     </motion.div>
                   </div>
@@ -1099,7 +1109,7 @@ function App() {
                     </div>
                     <div>
                       <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_fd_principal')}</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(fdStats.principal)}</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(fdStats.principal, selectedCurrency)}</p>
                     </div>
                   </div>
                   <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4">
@@ -1108,7 +1118,7 @@ function App() {
                     </div>
                     <div>
                       <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_fd_interest')}</p>
-                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(fdStats.interest)}</p>
+                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(fdStats.interest, selectedCurrency)}</p>
                     </div>
                   </div>
                 </div>
