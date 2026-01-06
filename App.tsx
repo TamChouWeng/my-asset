@@ -9,14 +9,14 @@ import { useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
 import { downloadCSV } from './utils/csvHelper';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  Table2, 
-  Plus, 
-  Download, 
-  Trash2, 
-  Edit2, 
-  TrendingUp, 
+import {
+  LayoutDashboard,
+  Table2,
+  Plus,
+  Download,
+  Trash2,
+  Edit2,
+  TrendingUp,
   Wallet,
   Search,
   Filter,
@@ -69,7 +69,7 @@ const calculateFdInterest = (amount: number, rate: number, startStr: string, end
   const end = new Date(endStr);
   const diffTime = end.getTime() - start.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays <= 0) return 0;
   // Simple Interest: (P * R * T) / 36500
   return parseFloat(((amount * rate * diffDays) / 36500).toFixed(2));
@@ -85,7 +85,7 @@ function App() {
   const [editingRecord, setEditingRecord] = useState<AssetRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('All');
-  
+
   // Sidebar State
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDesktopOpen, setIsDesktopOpen] = useState(true);
@@ -136,7 +136,7 @@ function App() {
   const checkMaturity = async (currentRecords: AssetRecord[]) => {
     const today = new Date().toLocaleDateString('en-CA');
     const updates: string[] = [];
-    
+
     currentRecords.forEach(r => {
       if (r.type === AssetType.FixedDeposit && r.status === AssetStatus.Active && r.maturityDate && r.maturityDate <= today) {
         updates.push(r.id);
@@ -144,7 +144,7 @@ function App() {
     });
 
     if (updates.length > 0) {
-      setRecords(prev => prev.map(r => 
+      setRecords(prev => prev.map(r =>
         updates.includes(r.id) ? { ...r, status: AssetStatus.Mature } : r
       ));
 
@@ -152,7 +152,7 @@ function App() {
         .from('assets')
         .update({ status: 'Mature' })
         .in('id', updates);
-        
+
       if (error) console.error("Error auto-maturing:", error);
     }
   };
@@ -171,13 +171,13 @@ function App() {
         const mappedData: AssetRecord[] = data.map(item => {
           // Fallback: If DB column missing, parse from Remarks
           const interestRate = item.interest_rate || parseRateFromRemarks(item.remarks);
-          
+
           // Fallback: If DB column missing, calculate FD interest or parse other interest
           let interestDividend = item.interest_dividend || parseIntFromRemarks(item.remarks);
-          
+
           // Force recalculate for Active FDs to ensure accuracy
           if (item.type === AssetType.FixedDeposit && interestRate > 0 && item.amount > 0 && item.date && (item.maturity_date || item.maturityDate)) {
-             interestDividend = calculateFdInterest(item.amount, interestRate, item.date, item.maturity_date || item.maturityDate);
+            interestDividend = calculateFdInterest(item.amount, interestRate, item.date, item.maturity_date || item.maturityDate);
           }
 
           return {
@@ -224,12 +224,12 @@ function App() {
       if (data.interestRate && data.interestRate > 0) {
         finalRemarks += ` [Rate: ${data.interestRate}%]`;
       }
-      
+
       // For non-FDs, we preserve user-entered Interest/Dividend
       if (data.type !== AssetType.FixedDeposit && data.interestDividend && data.interestDividend > 0) {
         finalRemarks += ` [Int: ${data.interestDividend}]`;
       }
-      
+
       finalRemarks = finalRemarks.trim();
 
       // 2. Prepare Payload (Exclude missing columns interest_rate/interest_dividend to prevent 400 Error)
@@ -254,18 +254,18 @@ function App() {
           .from('assets')
           .update(dbPayload)
           .eq('id', editingRecord.id);
-        
+
         if (error) throw error;
-        
+
         // Optimistic Update
-        const updatedRecord: AssetRecord = { 
-          ...data, 
+        const updatedRecord: AssetRecord = {
+          ...data,
           id: editingRecord.id,
           remarks: finalRemarks,
           interestRate: data.interestRate || 0,
-          interestDividend: data.interestDividend || 0 
+          interestDividend: data.interestDividend || 0
         };
-        
+
         const newRecords = records.map(r => r.id === editingRecord.id ? updatedRecord : r);
         setRecords(newRecords);
         checkMaturity(newRecords);
@@ -277,36 +277,36 @@ function App() {
           .select();
 
         if (error) throw error;
-        
-        if (inserted && inserted.length > 0) {
-           const newRecord = inserted[0];
-           
-           // Parse back immediately for UI
-           const rRate = parseRateFromRemarks(newRecord.remarks);
-           let rInt = parseIntFromRemarks(newRecord.remarks);
-           if (newRecord.type === AssetType.FixedDeposit && rRate > 0) {
-              rInt = calculateFdInterest(newRecord.amount, rRate, newRecord.date, newRecord.maturity_date);
-           }
 
-           const mappedNew: AssetRecord = {
-              id: newRecord.id,
-              date: newRecord.date,
-              type: newRecord.type,
-              name: newRecord.name,
-              action: newRecord.action,
-              unitPrice: newRecord.unit_price,
-              quantity: newRecord.quantity,
-              amount: newRecord.amount,
-              fee: newRecord.fee,
-              interestRate: rRate,
-              interestDividend: rInt,
-              maturityDate: newRecord.maturity_date,
-              status: newRecord.status,
-              remarks: newRecord.remarks
-           };
-           const newRecords = [mappedNew, ...records];
-           setRecords(newRecords);
-           checkMaturity(newRecords);
+        if (inserted && inserted.length > 0) {
+          const newRecord = inserted[0];
+
+          // Parse back immediately for UI
+          const rRate = parseRateFromRemarks(newRecord.remarks);
+          let rInt = parseIntFromRemarks(newRecord.remarks);
+          if (newRecord.type === AssetType.FixedDeposit && rRate > 0) {
+            rInt = calculateFdInterest(newRecord.amount, rRate, newRecord.date, newRecord.maturity_date);
+          }
+
+          const mappedNew: AssetRecord = {
+            id: newRecord.id,
+            date: newRecord.date,
+            type: newRecord.type,
+            name: newRecord.name,
+            action: newRecord.action,
+            unitPrice: newRecord.unit_price,
+            quantity: newRecord.quantity,
+            amount: newRecord.amount,
+            fee: newRecord.fee,
+            interestRate: rRate,
+            interestDividend: rInt,
+            maturityDate: newRecord.maturity_date,
+            status: newRecord.status,
+            remarks: newRecord.remarks
+          };
+          const newRecords = [mappedNew, ...records];
+          setRecords(newRecords);
+          checkMaturity(newRecords);
         }
       }
       setEditingRecord(null);
@@ -336,16 +336,16 @@ function App() {
 
   const handleBatchDelete = async () => {
     if (window.confirm(`Are you sure you want to delete ${selectedIds.size} records?`)) {
-       try {
+      try {
         const ids = Array.from(selectedIds);
         const { error } = await supabase.from('assets').delete().in('id', ids);
         if (error) throw error;
 
         setRecords(prev => prev.filter(r => !selectedIds.has(r.id)));
         setSelectedIds(new Set());
-       } catch (error) {
-         console.error("Error batch deleting:", error);
-       }
+      } catch (error) {
+        console.error("Error batch deleting:", error);
+      }
     }
   };
 
@@ -362,8 +362,8 @@ function App() {
       return;
     }
     if (newPassword.length < 6) {
-       alert("Password must be at least 6 characters");
-       return;
+      alert("Password must be at least 6 characters");
+      return;
     }
 
     setPasswordLoading(true);
@@ -379,7 +379,7 @@ function App() {
 
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
-      
+
       alert("Password updated successfully");
       setIsPasswordModalOpen(false);
       setNewPassword('');
@@ -420,24 +420,24 @@ function App() {
   const topAssetMetric = useMemo(() => {
     const activeRecords = records.filter(r => r.status === 'Active');
     const map = new Map<string, number>();
-    
+
     if (filterType === 'All') {
-        activeRecords.forEach(r => {
-          map.set(r.type, (map.get(r.type) || 0) + r.amount);
-        });
+      activeRecords.forEach(r => {
+        map.set(r.type, (map.get(r.type) || 0) + r.amount);
+      });
     } else {
-        activeRecords
-            .filter(r => r.type === filterType)
-            .forEach(r => {
-                map.set(r.name, (map.get(r.name) || 0) + r.amount);
-            });
+      activeRecords
+        .filter(r => r.type === filterType)
+        .forEach(r => {
+          map.set(r.name, (map.get(r.name) || 0) + r.amount);
+        });
     }
 
     let top = { name: 'N/A', value: 0 };
     map.forEach((val, key) => {
       if (val > top.value) top = { name: key, value: val };
     });
-    
+
     return top;
   }, [records, filterType]);
 
@@ -447,14 +447,14 @@ function App() {
   }, [records]);
 
   const propertyMetrics = useMemo(() => {
-    const propertyRecords = records.filter(r => 
-      r.type === AssetType.Property && 
+    const propertyRecords = records.filter(r =>
+      r.type === AssetType.Property &&
       (selectedProperty === 'All' || r.name === selectedProperty)
     );
-    
-    let totalInvested = 0; 
-    let totalReturned = 0; 
-    
+
+    let totalInvested = 0;
+    let totalReturned = 0;
+
     propertyRecords.forEach(r => {
       const action = r.action.toLowerCase();
       const isOutflow = PROPERTY_ACTIONS.OUTFLOW.some(k => action.includes(k));
@@ -512,10 +512,10 @@ function App() {
 
   const filteredRecords = useMemo(() => {
     return records
-      .filter(r => 
+      .filter(r =>
         (filterType === 'All' || r.type === filterType) &&
-        (r.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-         r.remarks?.toLowerCase().includes(searchTerm.toLowerCase()))
+        (r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          r.remarks?.toLowerCase().includes(searchTerm.toLowerCase()))
       )
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [records, searchTerm, filterType]);
@@ -534,7 +534,7 @@ function App() {
   }, [filteredRecords, sortConfig]);
 
   const totalPages = Math.ceil(sortedRecords.length / itemsPerPage);
-  
+
   const paginatedRecords = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     return sortedRecords.slice(startIndex, startIndex + itemsPerPage);
@@ -555,7 +555,7 @@ function App() {
         return 0;
       });
     } else {
-       recs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      recs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
     return recs;
   }, [propertyMetrics.records, propertySort]);
@@ -619,10 +619,10 @@ function App() {
 
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: { 
+    visible: {
       opacity: 1,
-      transition: { 
-        staggerChildren: 0.1 
+      transition: {
+        staggerChildren: 0.1
       }
     }
   };
@@ -637,11 +637,11 @@ function App() {
   }, [view]);
 
   if (loading) {
-     return (
-       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-         <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
-       </div>
-     );
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
+      </div>
+    );
   }
 
   if (!user) {
@@ -650,11 +650,11 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 relative transition-colors duration-300">
-      
+
       {/* Mobile Backdrop */}
       <AnimatePresence>
         {isMobileOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -673,17 +673,17 @@ function App() {
         ${isDesktopOpen ? 'md:w-64' : 'md:w-0 md:border-none md:overflow-hidden'}
       `}>
         <div className="w-64 h-full flex flex-col relative">
-          
+
           <div className="p-6 flex justify-between items-start">
             <div>
-              <motion.h1 
+              <motion.h1
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-emerald-600 dark:from-blue-400 dark:to-emerald-400 bg-clip-text text-transparent whitespace-nowrap"
               >
                 My Asset
               </motion.h1>
-              <motion.p 
+              <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
@@ -692,13 +692,13 @@ function App() {
                 {profile?.display_name || user.email}
               </motion.p>
             </div>
-            <button 
+            <button
               onClick={() => setIsMobileOpen(false)}
               className="md:hidden text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               <X size={20} />
             </button>
-             <button 
+            <button
               onClick={() => setIsDesktopOpen(false)}
               className="hidden md:block text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors absolute right-4 top-6"
               title="Collapse Sidebar"
@@ -706,30 +706,30 @@ function App() {
               <PanelLeftClose size={20} />
             </button>
           </div>
-          
+
           <nav className="px-4 space-y-2 flex-1 flex flex-col">
-            <button 
+            <button
               onClick={() => setView('dashboard')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
             >
               <LayoutDashboard size={20} />
               {t('nav_dashboard')}
             </button>
-            <button 
+            <button
               onClick={() => setView('property')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'property' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
             >
               <Building2 size={20} />
               {t('nav_property')}
             </button>
-            <button 
+            <button
               onClick={() => setView('fixed-deposit')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'fixed-deposit' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
             >
               <Landmark size={20} />
               {t('nav_fixed_deposit')}
             </button>
-            <button 
+            <button
               onClick={() => setView('list')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'list' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
             >
@@ -739,7 +739,7 @@ function App() {
 
             <div className="flex-1"></div>
 
-            <button 
+            <button
               onClick={() => setView('settings')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'settings' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
             >
@@ -748,7 +748,7 @@ function App() {
             </button>
           </nav>
 
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
@@ -766,10 +766,10 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-x-hidden flex flex-col h-screen">
-        
+
         <header className="md:hidden bg-white dark:bg-slate-900 p-4 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center sticky top-0 z-20 flex-shrink-0 transition-colors">
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={() => setIsMobileOpen(true)}
               className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             >
@@ -784,7 +784,7 @@ function App() {
 
         {!isDesktopOpen && (
           <div className="hidden md:block absolute top-6 left-6 z-30">
-            <button 
+            <button
               onClick={() => setIsDesktopOpen(true)}
               className="p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg shadow-lg hover:scale-105 transition-all"
               title="Expand Sidebar"
@@ -795,14 +795,14 @@ function App() {
         )}
 
         <div className="flex-1 overflow-y-auto">
-          <motion.div 
+          <motion.div
             key={view}
             initial="hidden"
             animate="visible"
             variants={containerVariants}
             className={`px-4 md:px-6 py-4 w-full mx-auto space-y-4`}
           >
-            
+
             <motion.div variants={itemVariants} className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className={`${!isDesktopOpen ? 'md:ml-12' : ''} transition-all duration-300`}>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
@@ -813,14 +813,14 @@ function App() {
                   {view === 'settings' && t('title_settings')}
                 </h2>
                 <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-                   <span>{view === 'settings' ? t('subtitle_settings') : t('subtitle_dashboard')}</span>
-                   {isDataLoading && <Loader2 size={12} className="animate-spin text-blue-500" />}
+                  <span>{view === 'settings' ? t('subtitle_settings') : t('subtitle_dashboard')}</span>
+                  {isDataLoading && <Loader2 size={12} className="animate-spin text-blue-500" />}
                 </div>
               </div>
-              
+
               {view !== 'settings' && (
                 <div className="flex gap-3 w-full md:w-auto">
-                  <button 
+                  <button
                     onClick={() => downloadCSV(records)}
                     className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:scale-105 active:scale-95"
                   >
@@ -828,7 +828,7 @@ function App() {
                     <span className="hidden md:inline">{t('btn_export')}</span>
                     <span className="md:hidden">CSV</span>
                   </button>
-                  <button 
+                  <button
                     onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
                     className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-900/30 transition-all hover:scale-105 active:scale-95"
                   >
@@ -843,13 +843,13 @@ function App() {
               <motion.div variants={itemVariants} className="space-y-4 h-full flex flex-col">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:min-h-[calc(100vh-7rem)]">
                   <div className="lg:col-span-3 h-full">
-                     <PieChartComponent 
-                        data={records} 
-                        theme={theme} 
-                        t={t}
-                        filterType={filterType}
-                        onFilterChange={setFilterType}
-                     />
+                    <PieChartComponent
+                      data={records}
+                      theme={theme}
+                      t={t}
+                      filterType={filterType}
+                      onFilterChange={setFilterType}
+                    />
                   </div>
                   <div className="flex flex-col gap-4 h-full">
                     <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-1">
@@ -858,7 +858,7 @@ function App() {
                       </div>
                       <div className="min-w-0 w-full">
                         <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">
-                           {filterType === 'All' ? t('stat_total_assets') : `Total ${filterType}`}
+                          {filterType === 'All' ? t('stat_total_assets') : `Total ${filterType}`}
                         </p>
                         <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{formatCurrency(totalValue)}</p>
                       </div>
@@ -870,7 +870,7 @@ function App() {
                       </div>
                       <div className="min-w-0 w-full">
                         <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">
-                           {filterType === 'All' ? t('stat_top_asset') : `Top ${filterType} Asset`}
+                          {filterType === 'All' ? t('stat_top_asset') : `Top ${filterType} Asset`}
                         </p>
                         <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{topAssetMetric.name}</p>
                         <p className="text-xs text-slate-500 truncate">{formatCurrency(topAssetMetric.value)}</p>
@@ -894,22 +894,22 @@ function App() {
             {view === 'property' && (
               <motion.div variants={itemVariants} className="space-y-6">
                 <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-between transition-colors">
-                   <div className="flex items-center gap-3">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg">
-                        <Filter size={20} />
-                      </div>
-                      <span className="font-medium text-slate-700 dark:text-slate-300">Select Property:</span>
-                   </div>
-                   <select
-                      value={selectedProperty}
-                      onChange={(e) => setSelectedProperty(e.target.value)}
-                      className="px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer transition-colors"
-                   >
-                      <option value="All">All Properties</option>
-                      {propertyNames.map(name => (
-                        <option key={name} value={name}>{name}</option>
-                      ))}
-                   </select>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg">
+                      <Filter size={20} />
+                    </div>
+                    <span className="font-medium text-slate-700 dark:text-slate-300">Select Property:</span>
+                  </div>
+                  <select
+                    value={selectedProperty}
+                    onChange={(e) => setSelectedProperty(e.target.value)}
+                    className="px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer transition-colors"
+                  >
+                    <option value="All">All Properties</option>
+                    {propertyNames.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <motion.div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
@@ -956,11 +956,11 @@ function App() {
                           </p>
                         </div>
                       </div>
-                      
+
                       <div className="relative h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div className="absolute top-0 bottom-0 left-0 bg-red-500 transition-all duration-500" style={{ width: propertyMetrics.totalInvested > 0 ? '100%' : '0%' }}></div>
-                        <div className="absolute top-0 bottom-0 left-0 bg-emerald-500 transition-all duration-500" 
-                            style={{ width: propertyMetrics.totalInvested > 0 ? `${(propertyMetrics.totalReturned / propertyMetrics.totalInvested) * 100}%` : '0%' }}>
+                        <div className="absolute top-0 bottom-0 left-0 bg-emerald-500 transition-all duration-500"
+                          style={{ width: propertyMetrics.totalInvested > 0 ? `${(propertyMetrics.totalReturned / propertyMetrics.totalInvested) * 100}%` : '0%' }}>
                         </div>
                       </div>
                       <div className="flex justify-between text-xs text-slate-500 mt-2">
@@ -971,85 +971,84 @@ function App() {
 
                       <div className="mt-8">
                         <div className="flex justify-between items-center mb-4">
-                           <h4 className="text-md font-medium text-slate-900 dark:text-slate-200">{t('prop_transactions')}</h4>
-                           <div className="flex items-center gap-2 text-xs">
-                             <select 
-                               value={propertyRowsPerPage} 
-                               onChange={(e) => { setPropertyRowsPerPage(Number(e.target.value)); setPropertyPage(1); }}
-                               className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 focus:outline-none"
-                             >
-                               <option value={5}>5 / page</option>
-                               <option value={10}>10 / page</option>
-                               <option value={20}>20 / page</option>
-                             </select>
-                           </div>
+                          <h4 className="text-md font-medium text-slate-900 dark:text-slate-200">{t('prop_transactions')}</h4>
+                          <div className="flex items-center gap-2 text-xs">
+                            <select
+                              value={propertyRowsPerPage}
+                              onChange={(e) => { setPropertyRowsPerPage(Number(e.target.value)); setPropertyPage(1); }}
+                              className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 focus:outline-none"
+                            >
+                              <option value={5}>5 / page</option>
+                              <option value={10}>10 / page</option>
+                              <option value={20}>20 / page</option>
+                            </select>
+                          </div>
                         </div>
-                        
+
                         <div className="bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-col">
-                            <div className="overflow-x-auto w-full">
-                                <table className="w-full text-sm text-left min-w-[600px]">
-                                  <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
-                                    <tr>
-                                      <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('date')}>
-                                        <div className="flex items-center gap-1">
-                                          {t('table_date')}
-                                          <ArrowUpDown size={12} className="opacity-50" />
-                                        </div>
-                                      </th>
-                                      <th className="px-4 py-3 whitespace-nowrap">{t('table_name')}</th>
-                                      <th className="px-4 py-3 whitespace-nowrap">{t('table_action')}</th>
-                                      <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('amount')}>
-                                        <div className="flex items-center justify-end gap-1">
-                                          {t('table_amount')}
-                                          <ArrowUpDown size={12} className="opacity-50" />
-                                        </div>
-                                      </th>
-                                      <th className="px-4 py-3 whitespace-nowrap">{t('table_status')}</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {paginatedPropertyRecords.map((item) => (
-                                      <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                        <td className="px-4 py-3">{item.date}</td>
-                                        <td className="px-4 py-3 font-medium">{item.name}</td>
-                                        <td className="px-4 py-3">
-                                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                            ['Buy', 'Pay', 'Installment', 'Renovation'].includes(item.action) 
-                                              ? 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400' 
-                                              : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                          }`}>
-                                            {item.action}
-                                          </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.amount)}</td>
-                                        <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{item.status}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+                          <div className="overflow-x-auto w-full">
+                            <table className="w-full text-sm text-left min-w-[600px]">
+                              <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
+                                <tr>
+                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('date')}>
+                                    <div className="flex items-center gap-1">
+                                      {t('table_date')}
+                                      <ArrowUpDown size={12} className="opacity-50" />
+                                    </div>
+                                  </th>
+                                  <th className="px-4 py-3 whitespace-nowrap">{t('table_name')}</th>
+                                  <th className="px-4 py-3 whitespace-nowrap">{t('table_action')}</th>
+                                  <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('amount')}>
+                                    <div className="flex items-center justify-end gap-1">
+                                      {t('table_amount')}
+                                      <ArrowUpDown size={12} className="opacity-50" />
+                                    </div>
+                                  </th>
+                                  <th className="px-4 py-3 whitespace-nowrap">{t('table_status')}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {paginatedPropertyRecords.map((item) => (
+                                  <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                    <td className="px-4 py-3">{item.date}</td>
+                                    <td className="px-4 py-3 font-medium">{item.name}</td>
+                                    <td className="px-4 py-3">
+                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${['Buy', 'Pay', 'Installment', 'Renovation'].includes(item.action)
+                                          ? 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400'
+                                          : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                        }`}>
+                                        {item.action}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.amount)}</td>
+                                    <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{item.status}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+
+                          {propertyTotalPages > 1 && (
+                            <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm">
+                              <button
+                                onClick={() => setPropertyPage(p => Math.max(1, p - 1))}
+                                disabled={propertyPage === 1}
+                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <ChevronLeft size={16} />
+                              </button>
+                              <span className="text-slate-500 dark:text-slate-400">
+                                Page {propertyPage} of {propertyTotalPages}
+                              </span>
+                              <button
+                                onClick={() => setPropertyPage(p => Math.min(propertyTotalPages, p + 1))}
+                                disabled={propertyPage === propertyTotalPages}
+                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <ChevronRight size={16} />
+                              </button>
                             </div>
-                            
-                            {propertyTotalPages > 1 && (
-                              <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm">
-                                <button 
-                                  onClick={() => setPropertyPage(p => Math.max(1, p - 1))}
-                                  disabled={propertyPage === 1}
-                                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <ChevronLeft size={16} />
-                                </button>
-                                <span className="text-slate-500 dark:text-slate-400">
-                                  Page {propertyPage} of {propertyTotalPages}
-                                </span>
-                                <button 
-                                  onClick={() => setPropertyPage(p => Math.min(propertyTotalPages, p + 1))}
-                                  disabled={propertyPage === propertyTotalPages}
-                                  className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <ChevronRight size={16} />
-                                </button>
-                              </div>
-                            )}
+                          )}
                         </div>
                       </div>
                     </>
@@ -1060,159 +1059,158 @@ function App() {
 
             {view === 'fixed-deposit' && (
               <motion.div variants={itemVariants} className="space-y-6">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-                       <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full shrink-0">
-                          <Landmark size={24} />
-                       </div>
-                       <div>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_fd_principal')}</p>
-                          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(fdStats.principal)}</p>
-                       </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+                    <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full shrink-0">
+                      <Landmark size={24} />
                     </div>
-                    <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-                       <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full shrink-0">
-                          <PiggyBank size={24} />
-                       </div>
-                       <div>
-                          <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_fd_interest')}</p>
-                          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(fdStats.interest)}</p>
-                       </div>
+                    <div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_fd_principal')}</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(fdStats.principal)}</p>
                     </div>
-                 </div>
+                  </div>
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4">
+                    <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full shrink-0">
+                      <PiggyBank size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_fd_interest')}</p>
+                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(fdStats.interest)}</p>
+                    </div>
+                  </div>
+                </div>
 
                 <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                     <div className="flex items-center gap-3">
-                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('title_fixed_deposit')}</h3>
-                     </div>
-                     
-                     <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                       <div className="relative flex-1 sm:w-64">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                          <input 
-                              type="text" 
-                              placeholder="Search Name..." 
-                              value={fdSearchTerm}
-                              onChange={(e) => setFdSearchTerm(e.target.value)}
-                              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                       </div>
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('title_fixed_deposit')}</h3>
+                    </div>
 
-                       <div className="flex items-center gap-2 text-xs">
-                          <select 
-                             value={fdRowsPerPage} 
-                             onChange={(e) => { setFdRowsPerPage(Number(e.target.value)); setFdPage(1); }}
-                             className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-2 focus:outline-none"
-                          >
-                             <option value={10}>10 / page</option>
-                             <option value={20}>20 / page</option>
-                             <option value={50}>50 / page</option>
-                          </select>
-                       </div>
-                     </div>
+                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                      <div className="relative flex-1 sm:w-64">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input
+                          type="text"
+                          placeholder="Search Name..."
+                          value={fdSearchTerm}
+                          onChange={(e) => setFdSearchTerm(e.target.value)}
+                          className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 text-xs">
+                        <select
+                          value={fdRowsPerPage}
+                          onChange={(e) => { setFdRowsPerPage(Number(e.target.value)); setFdPage(1); }}
+                          className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-2 focus:outline-none"
+                        >
+                          <option value={10}>10 / page</option>
+                          <option value={20}>20 / page</option>
+                          <option value={50}>50 / page</option>
+                        </select>
+                      </div>
+                    </div>
                   </div>
 
                   {fdRecords.length === 0 ? (
                     <div className="text-center py-12 text-slate-500 dark:text-slate-400 flex flex-col items-center">
-                       <Landmark size={48} className="opacity-20 mb-4" />
-                       <p>No Fixed Deposit records found.</p>
-                       <p className="text-sm mt-2">Add a new record with Type "Fixed Deposit" to see it here.</p>
+                      <Landmark size={48} className="opacity-20 mb-4" />
+                      <p>No Fixed Deposit records found.</p>
+                      <p className="text-sm mt-2">Add a new record with Type "Fixed Deposit" to see it here.</p>
                     </div>
                   ) : (
                     <div className="bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-col">
-                        <div className="overflow-x-auto w-full">
-                            <table className="w-full text-sm text-left min-w-[700px]">
-                              <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
-                                <tr>
-                                  <th className="px-4 py-3 whitespace-nowrap">{t('table_date')}</th>
-                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('name')}>
-                                     <div className="flex items-center gap-1">
-                                       {t('table_name')}
-                                       <ArrowUpDown size={12} className="opacity-50" />
-                                     </div>
-                                  </th>
-                                  <th className="px-4 py-3 text-right whitespace-nowrap">{t('table_amount')}</th>
-                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('status')}>
-                                     <div className="flex items-center gap-1">
-                                       {t('table_status')}
-                                       <ArrowUpDown size={12} className="opacity-50" />
-                                     </div>
-                                  </th>
-                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('maturityDate')}>
-                                     <div className="flex items-center gap-1">
-                                       {t('table_maturity')}
-                                       <ArrowUpDown size={12} className="opacity-50" />
-                                     </div>
-                                  </th>
-                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('interestDividend')}>
-                                     <div className="flex items-center gap-1">
-                                       {t('table_interest')}
-                                       <ArrowUpDown size={12} className="opacity-50" />
-                                     </div>
-                                  </th>
-                                  <th className="px-4 py-3 whitespace-nowrap text-center">{t('table_actions')}</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {paginatedFdRecords.map((item) => (
-                                  <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{item.date}</td>
-                                    <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{item.name}</td>
-                                    <td className="px-4 py-3 text-right font-medium text-slate-900 dark:text-slate-100">{formatCurrency(item.amount)}</td>
-                                    <td className="px-4 py-3">
-                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                        item.status === 'Active' 
-                                          ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' 
-                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                                      }`}>
-                                        {item.status}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                                       {item.maturityDate || '-'}
-                                    </td>
-                                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                                       {formatCurrency(item.interestDividend || 0)}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                       <div className="flex items-center justify-center gap-2">
-                                          <button 
-                                             onClick={() => handleEdit(item)}
-                                             className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-                                             title="Edit"
-                                          >
-                                             <Edit2 size={16} />
-                                          </button>
-                                       </div>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                      <div className="overflow-x-auto w-full">
+                        <table className="w-full text-sm text-left min-w-[700px]">
+                          <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
+                            <tr>
+                              <th className="px-4 py-3 whitespace-nowrap">{t('table_date')}</th>
+                              <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('name')}>
+                                <div className="flex items-center gap-1">
+                                  {t('table_name')}
+                                  <ArrowUpDown size={12} className="opacity-50" />
+                                </div>
+                              </th>
+                              <th className="px-4 py-3 text-right whitespace-nowrap">{t('table_amount')}</th>
+                              <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('status')}>
+                                <div className="flex items-center gap-1">
+                                  {t('table_status')}
+                                  <ArrowUpDown size={12} className="opacity-50" />
+                                </div>
+                              </th>
+                              <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('maturityDate')}>
+                                <div className="flex items-center gap-1">
+                                  {t('table_maturity')}
+                                  <ArrowUpDown size={12} className="opacity-50" />
+                                </div>
+                              </th>
+                              <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('interestDividend')}>
+                                <div className="flex items-center gap-1">
+                                  {t('table_interest')}
+                                  <ArrowUpDown size={12} className="opacity-50" />
+                                </div>
+                              </th>
+                              <th className="px-4 py-3 whitespace-nowrap text-center">{t('table_actions')}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paginatedFdRecords.map((item) => (
+                              <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{item.date}</td>
+                                <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{item.name}</td>
+                                <td className="px-4 py-3 text-right font-medium text-slate-900 dark:text-slate-100">{formatCurrency(item.amount)}</td>
+                                <td className="px-4 py-3">
+                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active'
+                                      ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                    }`}>
+                                    {item.status}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                                  {item.maturityDate || '-'}
+                                </td>
+                                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
+                                  {formatCurrency(item.interestDividend || 0)}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center justify-center gap-2">
+                                    <button
+                                      onClick={() => handleEdit(item)}
+                                      className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
+                                      title="Edit"
+                                    >
+                                      <Edit2 size={16} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {fdTotalPages > 1 && (
+                        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm">
+                          <button
+                            onClick={() => setFdPage(p => Math.max(1, p - 1))}
+                            disabled={fdPage === 1}
+                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          <span className="text-slate-500 dark:text-slate-400">
+                            Page {fdPage} of {fdTotalPages}
+                          </span>
+                          <button
+                            onClick={() => setFdPage(p => Math.min(fdTotalPages, p + 1))}
+                            disabled={fdPage === fdTotalPages}
+                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
                         </div>
-                        
-                        {fdTotalPages > 1 && (
-                          <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm">
-                            <button 
-                              onClick={() => setFdPage(p => Math.max(1, p - 1))}
-                              disabled={fdPage === 1}
-                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <ChevronLeft size={16} />
-                            </button>
-                            <span className="text-slate-500 dark:text-slate-400">
-                              Page {fdPage} of {fdTotalPages}
-                            </span>
-                            <button 
-                              onClick={() => setFdPage(p => Math.min(fdTotalPages, p + 1))}
-                              disabled={fdPage === fdTotalPages}
-                              className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <ChevronRight size={16} />
-                            </button>
-                          </div>
-                        )}
+                      )}
                     </div>
                   )}
                 </div>
@@ -1243,9 +1241,9 @@ function App() {
                         <option key={t} value={t}>{t}</option>
                       ))}
                     </select>
-                    
+
                     {selectedIds.size > 0 && (
-                      <button 
+                      <button
                         onClick={handleBatchDelete}
                         className="px-4 py-2 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors flex items-center gap-2"
                       >
@@ -1264,8 +1262,8 @@ function App() {
                         <tr>
                           <th className="px-4 py-3 w-10">
                             <div className="flex items-center justify-center">
-                              <input 
-                                type="checkbox" 
+                              <input
+                                type="checkbox"
                                 checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
                                 onChange={toggleSelectAll}
                                 className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
@@ -1299,13 +1297,13 @@ function App() {
                       <tbody>
                         {paginatedRecords.length > 0 ? (
                           paginatedRecords.map((item) => (
-                            <tr 
-                              key={item.id} 
+                            <tr
+                              key={item.id}
                               className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${selectedIds.has(item.id) ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}
                             >
                               <td className="px-4 py-3 text-center">
-                                <input 
-                                  type="checkbox" 
+                                <input
+                                  type="checkbox"
                                   checked={selectedIds.has(item.id)}
                                   onChange={() => toggleSelect(item.id)}
                                   className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
@@ -1328,24 +1326,23 @@ function App() {
                                 {formatCurrency(item.amount)}
                               </td>
                               <td className="px-4 py-3">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                  item.status === 'Active' 
-                                    ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' 
+                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active'
+                                    ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
                                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                                }`}>
+                                  }`}>
                                   {item.status}
                                 </span>
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex items-center justify-center gap-2">
-                                  <button 
+                                  <button
                                     onClick={() => handleEdit(item)}
                                     className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
                                     title="Edit"
                                   >
                                     <Edit2 size={16} />
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={() => handleDelete(item.id)}
                                     className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
                                     title="Delete"
@@ -1371,46 +1368,45 @@ function App() {
                   </div>
 
                   <div className="border-t border-slate-200 dark:border-slate-800 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm bg-slate-50 dark:bg-slate-900/50">
-                     <div className="text-slate-500 dark:text-slate-400">
-                       Showing {Math.min(filteredRecords.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredRecords.length, currentPage * itemsPerPage)} of {filteredRecords.length} entries
-                     </div>
-                     <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                          disabled={currentPage === 1}
-                          className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <ChevronLeft size={16} />
-                        </button>
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                          let pageNum = i + 1;
-                          if (totalPages > 5) {
-                             if (currentPage > 3) pageNum = currentPage - 2 + i;
-                             if (pageNum > totalPages) pageNum = totalPages - 4 + i;
-                          }
-                          
-                          return (
-                            <button
-                              key={i}
-                              onClick={() => setCurrentPage(pageNum)}
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                                currentPage === pageNum 
-                                  ? 'bg-blue-600 text-white' 
-                                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                    <div className="text-slate-500 dark:text-slate-400">
+                      Showing {Math.min(filteredRecords.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredRecords.length, currentPage * itemsPerPage)} of {filteredRecords.length} entries
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum = i + 1;
+                        if (totalPages > 5) {
+                          if (currentPage > 3) pageNum = currentPage - 2 + i;
+                          if (pageNum > totalPages) pageNum = totalPages - 4 + i;
+                        }
+
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${currentPage === pageNum
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
                               }`}
-                            >
-                              {pageNum}
-                            </button>
-                          );
-                        })}
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                          disabled={currentPage === totalPages}
-                          className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <ChevronRight size={16} />
-                        </button>
-                     </div>
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -1418,113 +1414,111 @@ function App() {
 
             {view === 'settings' && (
               <motion.div variants={itemVariants} className="max-w-2xl mx-auto space-y-6">
-                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                          <Settings size={20} className="text-slate-400" />
-                          Preferences
-                       </h3>
-                    </div>
-                    
-                    <div className="p-6 space-y-6">
-                       <div className="flex items-center justify-between">
-                          <div>
-                             <p className="font-medium text-slate-900 dark:text-slate-100">{t('setting_theme')}</p>
-                             <p className="text-sm text-slate-500 dark:text-slate-400">{t('setting_theme_desc')}</p>
-                          </div>
-                          <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                             <button
-                               onClick={() => updateProfile({ theme: 'light' })}
-                               className={`p-2 rounded-md flex items-center gap-2 text-sm transition-all ${
-                                 theme === 'light' ? 'bg-white shadow text-blue-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                               }`}
-                             >
-                                <Sun size={16} />
-                                {t('theme_light')}
-                             </button>
-                             <button
-                               onClick={() => updateProfile({ theme: 'dark' })}
-                               className={`p-2 rounded-md flex items-center gap-2 text-sm transition-all ${
-                                 theme === 'dark' ? 'bg-slate-700 shadow text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                               }`}
-                             >
-                                <Moon size={16} />
-                                {t('theme_dark')}
-                             </button>
-                          </div>
-                       </div>
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                  <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                      <Settings size={20} className="text-slate-400" />
+                      Preferences
+                    </h3>
+                  </div>
 
-                       <div className="h-px bg-slate-100 dark:bg-slate-800"></div>
-
-                       <div className="flex items-center justify-between">
-                          <div>
-                             <p className="font-medium text-slate-900 dark:text-slate-100">{t('setting_language')}</p>
-                             <p className="text-sm text-slate-500 dark:text-slate-400">{t('setting_language_desc')}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Globe size={18} className="text-slate-400" />
-                            <select 
-                               value={language}
-                               onChange={(e) => updateProfile({ language: e.target.value as Language })}
-                               className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                            >
-                               <option value="en">English</option>
-                               <option value="zh">中文 (Chinese)</option>
-                               <option value="ms">Bahasa Melayu</option>
-                            </select>
-                          </div>
-                       </div>
-                    </div>
-                 </div>
-
-                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                          <Lock size={20} className="text-slate-400" />
-                          Security
-                       </h3>
-                    </div>
-                    <div className="p-6">
-                        <div className="flex items-center justify-between">
-                           <div>
-                              <p className="font-medium text-slate-900 dark:text-slate-100">Password</p>
-                              <p className="text-sm text-slate-500 dark:text-slate-400">Change your account password</p>
-                           </div>
-                           <button
-                             onClick={() => setIsPasswordModalOpen(true)}
-                             className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm font-medium"
-                           >
-                              Change Password
-                           </button>
-                        </div>
-                    </div>
-                 </div>
-
-                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                    <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                          <User size={20} className="text-slate-400" />
-                          Account
-                       </h3>
-                    </div>
-                    <div className="p-6 flex items-center justify-between">
-                        <div>
-                             <p className="font-medium text-slate-900 dark:text-slate-100">Currently logged in as</p>
-                             <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
-                        </div>
+                  <div className="p-6 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{t('setting_theme')}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{t('setting_theme_desc')}</p>
+                      </div>
+                      <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
                         <button
-                          onClick={signOut}
-                          className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium"
+                          onClick={() => updateProfile({ theme: 'light' })}
+                          className={`p-2 rounded-md flex items-center gap-2 text-sm transition-all ${theme === 'light' ? 'bg-white shadow text-blue-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                            }`}
                         >
-                           <LogOut size={16} />
-                           Sign Out
+                          <Sun size={16} />
+                          {t('theme_light')}
                         </button>
+                        <button
+                          onClick={() => updateProfile({ theme: 'dark' })}
+                          className={`p-2 rounded-md flex items-center gap-2 text-sm transition-all ${theme === 'dark' ? 'bg-slate-700 shadow text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                            }`}
+                        >
+                          <Moon size={16} />
+                          {t('theme_dark')}
+                        </button>
+                      </div>
                     </div>
-                 </div>
 
-                 <div className="text-center pt-4 pb-8 text-slate-400 dark:text-slate-600 text-xs">
-                    Version: Beta 1.1
-                 </div>
+                    <div className="h-px bg-slate-100 dark:bg-slate-800"></div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{t('setting_language')}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{t('setting_language_desc')}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Globe size={18} className="text-slate-400" />
+                        <select
+                          value={language}
+                          onChange={(e) => updateProfile({ language: e.target.value as Language })}
+                          className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        >
+                          <option value="en">English</option>
+                          <option value="zh">中文 (Chinese)</option>
+                          <option value="ms">Bahasa Melayu</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                  <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                      <Lock size={20} className="text-slate-400" />
+                      Security
+                    </h3>
+                  </div>
+                  <div className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">Password</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Change your account password</p>
+                      </div>
+                      <button
+                        onClick={() => setIsPasswordModalOpen(true)}
+                        className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm font-medium"
+                      >
+                        Change Password
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                  <div className="p-6 border-b border-slate-200 dark:border-slate-800">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                      <User size={20} className="text-slate-400" />
+                      Account
+                    </h3>
+                  </div>
+                  <div className="p-6 flex items-center justify-between">
+                    <div>
+                      <p className="font-medium text-slate-900 dark:text-slate-100">Currently logged in as</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
+                    </div>
+                    <button
+                      onClick={signOut}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium"
+                    >
+                      <LogOut size={16} />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+
+                <div className="text-center pt-4 pb-8 text-slate-400 dark:text-slate-600 text-xs">
+                  Version: Beta 1.2
+                </div>
               </motion.div>
             )}
 
@@ -1534,9 +1528,9 @@ function App() {
 
       {/* Floating Elements */}
       <Chatbot records={records} t={t} />
-      <TransactionForm 
-        isOpen={isFormOpen} 
-        onClose={() => setIsFormOpen(false)} 
+      <TransactionForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
         onSave={handleSave}
         initialData={editingRecord}
       />
@@ -1545,75 +1539,75 @@ function App() {
       <AnimatePresence>
         {isPasswordModalOpen && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-             <motion.div 
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
-               exit={{ opacity: 0 }}
-               onClick={() => setIsPasswordModalOpen(false)}
-               className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-             />
-             <motion.div 
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-md p-6 border border-slate-200 dark:border-slate-800 relative z-10"
-             >
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Change Password</h3>
-                  <button onClick={() => setIsPasswordModalOpen(false)} className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"><X size={24} /></button>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsPasswordModalOpen(false)}
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-md p-6 border border-slate-200 dark:border-slate-800 relative z-10"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Change Password</h3>
+                <button onClick={() => setIsPasswordModalOpen(false)} className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-200"><X size={24} /></button>
+              </div>
+
+              <form onSubmit={handleUpdatePassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Current Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="••••••••"
+                  />
                 </div>
-                
-                <form onSubmit={handleUpdatePassword} className="space-y-4">
-                   <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Current Password</label>
-                      <input
-                        type="password"
-                        required
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="••••••••"
-                      />
-                   </div>
-                   <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">New Password</label>
-                      <input
-                        type="password"
-                        required
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="••••••••"
-                      />
-                   </div>
-                   <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Confirm New Password</label>
-                      <input
-                        type="password"
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="••••••••"
-                      />
-                   </div>
-                   
-                   <div className="flex justify-end pt-2">
-                     <button
-                        type="submit"
-                        disabled={passwordLoading}
-                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-                     >
-                        {passwordLoading && <Loader2 size={16} className="animate-spin" />}
-                        {passwordLoading ? 'Verifying...' : 'Update Password'}
-                     </button>
-                   </div>
-                </form>
-             </motion.div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">New Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="••••••••"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Confirm New Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={passwordLoading}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                  >
+                    {passwordLoading && <Loader2 size={16} className="animate-spin" />}
+                    {passwordLoading ? 'Verifying...' : 'Update Password'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
           </div>
         )}
       </AnimatePresence>
-      
+
     </div>
   );
 }
