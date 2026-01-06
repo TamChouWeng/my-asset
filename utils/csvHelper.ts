@@ -48,3 +48,90 @@ export const downloadCSV = (data: AssetRecord[]) => {
   link.click();
   document.body.removeChild(link);
 };
+
+export const parseCSV = async (file: File): Promise<AssetRecord[]> => {
+  const text = await file.text();
+  const rows = text.split('\n').map(row => row.trim()).filter(row => row.length > 0);
+
+  if (rows.length < 2) {
+    throw new Error('CSV file is empty or missing headers');
+  }
+
+  // Basic CSV Parser that handles quotes
+  const parseRow = (row: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuote = false;
+
+    for (let i = 0; i < row.length; i++) {
+      const char = row[i];
+      if (char === '"') {
+        inQuote = !inQuote;
+      } else if (char === ',' && !inQuote) {
+        result.push(current);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current);
+
+    // Remove potential surrounding quotes from values
+    return result.map(val => val.replace(/^"|"$/g, '').trim());
+  };
+
+  const headers = parseRow(rows[0]);
+
+  // Validation: Check required headers
+  const requiredHeaders = ['Date', 'Type', 'Name', 'Action', 'Amount', 'Status'];
+  const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+
+  if (missingHeaders.length > 0) {
+    throw new Error(`Missing required headers: ${missingHeaders.join(', ')}`);
+  }
+
+  const records: AssetRecord[] = [];
+  const startRowIndex = 1;
+
+  for (let i = startRowIndex; i < rows.length; i++) {
+    const rawValues = parseRow(rows[i]);
+
+    // Skip empty lines or mismatched columns
+    if (rawValues.length < headers.length) continue;
+
+    const rowObj: any = {};
+    headers.forEach((header, index) => {
+      rowObj[header] = rawValues[index];
+    });
+
+    // Clean and validate data types
+    const parseAmount = (val: string) => parseFloat(val) || 0;
+    const parseNumber = (val: string) => val ? parseFloat(val) : undefined;
+
+    // Create new record
+    const record: any = {
+      // Temporary ID, will be replaced by database or uuid
+      id: crypto.randomUUID(),
+      date: rowObj['Date'],
+      type: rowObj['Type'],
+      name: rowObj['Name'],
+      action: rowObj['Action'],
+      unitPrice: parseNumber(rowObj['Unit Price']),
+      quantity: parseNumber(rowObj['Quantity']),
+      amount: parseAmount(rowObj['Total Amount'] || rowObj['Amount']),
+      fee: parseNumber(rowObj['Fee']),
+      interestDividend: parseNumber(rowObj['Interest/Dividend']),
+      maturityDate: rowObj['Maturity Date'],
+      status: rowObj['Status'],
+      currency: rowObj['Currency'] || 'MYR',
+      remarks: rowObj['Remarks']
+    };
+
+    // Clean undefined keys
+    Object.keys(record).forEach(key => record[key] === undefined && delete record[key]);
+
+    records.push(record);
+  }
+
+  return records;
+};

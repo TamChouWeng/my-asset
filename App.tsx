@@ -7,8 +7,9 @@ import Chatbot from './components/Chatbot';
 import LoginScreen from './components/LoginScreen';
 import { useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
-import { downloadCSV } from './utils/csvHelper';
+import { downloadCSV, parseCSV } from './utils/csvHelper';
 import { motion, AnimatePresence } from 'framer-motion';
+import ImportConfirmationModal from './components/ImportConfirmationModal';
 import {
   LayoutDashboard,
   Table2,
@@ -128,6 +129,12 @@ function App() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  // Import State
+  const [importCandidates, setImportCandidates] = useState<AssetRecord[]>([]);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Derived state from Profile (with defaults)
   const theme = profile?.theme || 'dark';
@@ -359,6 +366,64 @@ function App() {
       } catch (error) {
         console.error("Error batch deleting:", error);
       }
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const candidates = await parseCSV(file);
+      if (candidates.length === 0) {
+        alert("No valid records found in the CSV file.");
+        return;
+      }
+      setImportCandidates(candidates);
+      setIsImportModalOpen(true);
+    } catch (error: any) {
+      console.error("CSV Parse Error:", error);
+      alert(error.message || "Failed to parse CSV file");
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!user || importCandidates.length === 0) return;
+
+    setIsImporting(true);
+    try {
+      const payload = importCandidates.map(r => ({
+        user_id: user.id,
+        date: r.date,
+        type: r.type,
+        name: r.name,
+        action: r.action,
+        unit_price: r.unitPrice,
+        quantity: r.quantity,
+        amount: r.amount,
+        fee: r.fee,
+        interest_dividend: r.interestDividend, // Fallback column
+        maturity_date: r.maturityDate,
+        status: r.status,
+        currency: r.currency,
+        remarks: r.remarks
+      }));
+
+      const { error } = await supabase.from('assets').insert(payload);
+      if (error) throw error;
+
+      await fetchRecords();
+      setIsImportModalOpen(false);
+      setImportCandidates([]);
+      alert(`Successfully imported ${payload.length} records.`);
+
+    } catch (error: any) {
+      console.error("Import Error:", error);
+      alert("Failed to import records: " + error.message);
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -865,12 +930,21 @@ function App() {
                   </button>
 
                   <button
-                    onClick={() => { /* Import logic to be added */ }}
+                    onClick={() => fileInputRef.current?.click()}
                     title="Import CSV"
                     className="w-10 h-10 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:scale-105 active:scale-95"
                   >
                     <Upload size={20} />
                   </button>
+
+                  {/* Hidden File Input */}
+                  <input
+                    type="file"
+                    accept=".csv"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
 
                   <button
                     onClick={() => { setEditingRecord(null); setIsFormOpen(true); }}
@@ -1674,6 +1748,15 @@ function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Import Confirmation Modal */}
+      <ImportConfirmationModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onConfirm={handleConfirmImport}
+        candidates={importCandidates}
+        isImporting={isImporting}
+      />
 
     </div>
   );
