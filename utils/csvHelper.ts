@@ -49,6 +49,37 @@ export const downloadCSV = (data: AssetRecord[]) => {
   document.body.removeChild(link);
 };
 
+export const normalizeDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+
+  // Try to handle various separators: - / .
+  const parts = dateStr.split(/[-/.]/);
+  if (parts.length !== 3) return dateStr;
+
+  let day, month, year;
+
+  // Check if it's already YYYY-MM-DD
+  if (parts[0].length === 4) {
+    year = parts[0];
+    month = parts[1];
+    day = parts[2];
+  } else {
+    // Assume DD-MM-YY or DD-MM-YYYY
+    day = parts[0];
+    month = parts[1];
+    year = parts[2];
+
+    if (year.length === 2) {
+      // 20xx for years < 70, 19xx for years >= 70
+      year = parseInt(year) < 70 ? `20${year}` : `19${year}`;
+    }
+  }
+
+  // Pad with zeros
+  const pad = (s: string) => s.padStart(2, '0');
+  return `${year}-${pad(month)}-${pad(day)}`;
+};
+
 export const parseCSV = async (file: File): Promise<AssetRecord[]> => {
   const text = await file.text();
   const rows = text.split('\n').map(row => row.trim()).filter(row => row.length > 0);
@@ -112,7 +143,7 @@ export const parseCSV = async (file: File): Promise<AssetRecord[]> => {
     const record: any = {
       // Temporary ID, will be replaced by database or uuid
       id: crypto.randomUUID(),
-      date: rowObj['Date'],
+      date: normalizeDate(rowObj['Date']),
       type: rowObj['Type'],
       name: rowObj['Name'],
       action: rowObj['Action'],
@@ -121,7 +152,7 @@ export const parseCSV = async (file: File): Promise<AssetRecord[]> => {
       amount: parseAmount(rowObj['Amount'] || rowObj['Total Amount']), // Support both for backward compatibility
       fee: parseNumber(rowObj['Fee']),
       interestDividend: parseNumber(rowObj['Interest/Dividend']),
-      maturityDate: rowObj['Maturity Date'],
+      maturityDate: normalizeDate(rowObj['Maturity Date']),
       status: rowObj['Status'],
       currency: rowObj['Currency'] || 'MYR',
       remarks: rowObj['Remarks']

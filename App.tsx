@@ -7,7 +7,7 @@ import Chatbot from './components/Chatbot';
 import LoginScreen from './components/LoginScreen';
 import { useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
-import { downloadCSV, parseCSV } from './utils/csvHelper';
+import { downloadCSV, parseCSV, normalizeDate } from './utils/csvHelper';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImportConfirmationModal from './components/ImportConfirmationModal';
 import {
@@ -253,7 +253,7 @@ function App() {
       // 2. Prepare Payload (Exclude missing columns interest_rate/interest_dividend to prevent 400 Error)
       const dbPayload = {
         user_id: user.id,
-        date: data.date ? data.date : null,
+        date: data.date ? normalizeDate(data.date) : null,
         type: data.type,
         name: data.name,
         action: data.action,
@@ -262,7 +262,7 @@ function App() {
         amount: isNaN(Number(data.amount)) ? 0 : data.amount,
         fee: data.fee || 0,
         // Removed: interest_rate, interest_dividend (Using remarks as fallback storage)
-        maturity_date: data.maturityDate || null,
+        maturity_date: data.maturityDate ? normalizeDate(data.maturityDate) : null,
         status: data.status,
         currency: data.currency,
         remarks: finalRemarks
