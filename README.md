@@ -2,38 +2,37 @@
  
 **My Asset** is a robust, cloud-native application designed to help you track, visualize, and manage your financial portfolio. Built with React and Supabase, it offers enterprise-grade data security, real-time synchronization, and AI-powered insights.
 
-**Current Version:** Beta 2.1
+**Current Version:** Beta 2.2
 
 > **Note:** This build is fully compatible and optimized for hosting on **GitHub Pages**.
 
 ## 🚀 Features
 
-### 1. Asset Management (CRUD)
+### 1. Asset Management & Import
 - **Multi-Asset Support:** Full tracking support for:
     - **Stocks** (Buy/Sold/Dividend)
-    - **ETF** (Buy/Sold/Dividend) - *New in Beta 2.1*
+    - **ETF** (Buy/Sold/Dividend)
     - **Fixed Deposits** (Auto-interest calculation upon maturity)
     - **EPF** (Self/Employee contributions)
     - **Property** (Rental/Maintenance/Renovation tracking)
     - **Custom Assets** (Gold, etc.)
-- **Advanced Form Validation:** Smart forms that adapt fields based on asset type (e.g., Interest Rate & Maturity Date for FDs).
-- **Auto-Calculations:**
-    - Fixed Deposit Interest: Automatically calculated based on Principal, Rate, and Duration.
-    - Total Amount: Automatically computed from Unit Price × Quantity.
+- **CSV Import Engine:** *New in Beta 2.2*
+    - Manual upload support for transaction history.
+    - **Duplicate Detection:** Automatic verification against existing records to prevent double-counting.
+    - **Batch Confirmation:** Review records in a summary modal before committing to the database.
+    - **Date Normalization:** Automatic conversion of various date formats (DD-MM-YY, etc.) to ISO (YYYY-MM-DD).
+- **Advanced Form Validation:** Smart forms that adapt fields based on asset type.
 - **Batch Operations:** Efficiently delete multiple records at once.
 
 ### 2. Dashboard & Visualization
-- **Global Currency Filtering:** *New in Beta 2.0*
+- **Global Currency Filtering:** 
     - Toggle between **MYR** and **USD** in Settings.
     - All charts, lists, and summaries instantly reflect the selected currency.
 - **Real-time Metrics:**
     - **Total Net Worth** (Live aggregation)
     - **Top Asset Class** breakdown
 - **Interactive Charts:** Dynamic Pie Charts visualization of asset allocation.
-- **Responsive Design:**
-    - Mobile-responsive Sidebar (Collapsible/Expandable).
-    - Mobile-first Data Lists/Cards.
-    - Dark/Light mode synchronization with system or user preference.
+- **UI Refinements:** Streamlined header with square icon buttons for Export, Import, and Add actions.
 
 ### 3. Property Portfolio Intelligence
 - **Dedicated Property View:** Filter and sort specific property records.
@@ -42,12 +41,12 @@
     - **Outflow:** Pay/Maintenance/Renovation
     - **Net Cash Flow:** Automatic calculation of ROI and Profit/Loss per property.
 
+
 ### 4. AI Financial Assistant
-- **Gemini 3 Flash Integration:**
-    - Use natural language to query your portfolio ("How is my property performing?").
+- **Gemini 2.0 Flash Integration:**
+    - Use natural language to query your portfolio.
     - Context-aware answers based on your **active** assets.
-    - Markdown-formatted responses (Bold text, Lists).
-- **Security:** API Key configuration support for personal billing keys.
+- **Security:** API Key configuration support for personal keys.
 
 ### 5. Fixed Deposit (FD) Management
 - **Maturity Check:**

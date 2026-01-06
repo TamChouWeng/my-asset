@@ -1672,9 +1672,9 @@ function App() {
                   </div>
                 </div>
 
-                <div className="text-center pt-4 pb-8 text-slate-400 dark:text-slate-600 text-xs">
-                  Version: Beta 2.1
-                </div>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-4 text-center">
+                  Version: Beta 2.2
+                </p>
               </motion.div>
             )}
 
