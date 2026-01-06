@@ -13,6 +13,7 @@ export const downloadCSV = (data: AssetRecord[]) => {
     'Interest/Dividend',
     'Maturity Date',
     'Status',
+    'Currency',
     'Remarks'
   ];
 
@@ -28,6 +29,7 @@ export const downloadCSV = (data: AssetRecord[]) => {
     item.interestDividend || '',
     item.maturityDate || '',
     item.status,
+    item.currency || 'MYR',
     `"${item.remarks || ''}"`
   ]);
 
