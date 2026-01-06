@@ -1575,7 +1575,7 @@ function App() {
                 </div>
 
                 <div className="text-center pt-4 pb-8 text-slate-400 dark:text-slate-600 text-xs">
-                  Version: Beta 1.2
+                  Version: Beta 2.0
                 </div>
               </motion.div>
             )}
