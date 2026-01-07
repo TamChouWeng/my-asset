@@ -32,6 +32,19 @@ export const PROPERTY_ACTIONS = {
   INFLOW: ['rent', 'income', 'sold', 'dividend']
 };
 
+// Multipliers for general asset actions to calculate net balance
+export const ACTION_MULTIPLIERS: Record<string, number> = {
+  'buy': 1,
+  'sold': -1,
+  'dividend': 0, // Dividends are usually income/interest, not principal change
+  'pay': 1,
+  'rent': 0, // Rent is income
+  'self contribute': 1,
+  'employee contribute': 1,
+  'renovation': 1,
+  'maintenance': 1,
+};
+
 export type Language = 'en' | 'zh' | 'ms';
 
 export const TRANSLATIONS: Record<Language, Record<string, string>> = {

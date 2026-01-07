@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetRecord, AssetType, AssetStatus } from './types';
-import { TRANSLATIONS, Language, PROPERTY_ACTIONS } from './constants';
+import { TRANSLATIONS, Language, PROPERTY_ACTIONS, ACTION_MULTIPLIERS } from './constants';
 import PieChartComponent from './components/PieChartComponent';
 import TransactionForm from './components/TransactionForm';
 import Chatbot from './components/Chatbot';
@@ -518,7 +518,10 @@ function App() {
       .filter(r => filterType === 'All' || r.type === filterType);
 
     // Now just sum up (since they are all same currency)
-    const total = activeRecords.reduce((acc, curr) => acc + (curr.amount || 0), 0);
+    const total = activeRecords.reduce((acc, curr) => {
+      const multiplier = ACTION_MULTIPLIERS[curr.action.toLowerCase()] ?? 1;
+      return acc + (curr.amount * multiplier || 0);
+    }, 0);
 
     return { [selectedCurrency]: total };
   }, [currencyRecords, filterType, selectedCurrency]);
@@ -532,13 +535,15 @@ function App() {
 
     if (filterType === 'All') {
       activeRecords.forEach(r => {
-        map.set(r.type, (map.get(r.type) || 0) + r.amount);
+        const multiplier = ACTION_MULTIPLIERS[r.action.toLowerCase()] ?? 1;
+        map.set(r.type, (map.get(r.type) || 0) + (r.amount * multiplier));
       });
     } else {
       activeRecords
         .filter(r => r.type === filterType)
         .forEach(r => {
-          map.set(r.name, (map.get(r.name) || 0) + r.amount);
+          const multiplier = ACTION_MULTIPLIERS[r.action.toLowerCase()] ?? 1;
+          map.set(r.name, (map.get(r.name) || 0) + (r.amount * multiplier));
         });
     }
 
@@ -610,7 +615,11 @@ function App() {
 
   const fdStats = useMemo(() => {
     const activeFDs = currencyRecords.filter(r => r.type === AssetType.FixedDeposit && r.status === AssetStatus.Active);
-    const principal = activeFDs.reduce((sum, r) => sum + r.amount, 0);
+    const principal = activeFDs.reduce((sum, r) => {
+      const multiplier = ACTION_MULTIPLIERS[r.action.toLowerCase()] ?? 1;
+      return sum + (r.amount * multiplier);
+    }, 0);
+
     // Use the on-the-fly calculated interestDividend from records state
     const interest = activeFDs.reduce((sum, r) => sum + (r.interestDividend || 0), 0);
     return { principal, interest };

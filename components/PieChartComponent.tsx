@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { motion } from 'framer-motion';
 import { AssetRecord, AssetStatus, ChartDataPoint, AssetType } from '../types';
-import { COLORS, DETAIL_COLORS } from '../constants';
+import { COLORS, DETAIL_COLORS, ACTION_MULTIPLIERS } from '../constants';
 
 interface PieChartComponentProps {
   data: AssetRecord[];
@@ -13,7 +13,7 @@ interface PieChartComponentProps {
 }
 
 const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, filterType, onFilterChange }) => {
-  
+
   // Aggregate data based on filter
   const aggregatedData = useMemo(() => {
     const map = new Map<string, number>();
@@ -24,12 +24,14 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, f
         if (filterType === 'All') {
           // Group by Asset Type
           const current = map.get(item.type) || 0;
-          map.set(item.type, current + item.amount);
+          const multiplier = ACTION_MULTIPLIERS[item.action.toLowerCase()] ?? 1;
+          map.set(item.type, current + (item.amount * multiplier));
         } else {
           // Filter by selected Type, Group by Name
           if (item.type === filterType) {
             const current = map.get(item.name) || 0;
-            map.set(item.name, current + item.amount);
+            const multiplier = ACTION_MULTIPLIERS[item.action.toLowerCase()] ?? 1;
+            map.set(item.name, current + (item.amount * multiplier));
           }
         }
       }
@@ -41,7 +43,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, f
     map.forEach((value, key) => {
       if (value > 0) {
         let color: string;
-        
+
         if (filterType === 'All') {
           // Use predefined colors for types
           color = COLORS[key as AssetType] || '#cccccc';
@@ -65,7 +67,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, f
   const totalValue = useMemo(() => aggregatedData.reduce((acc, cur) => acc + cur.value, 0), [aggregatedData]);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
@@ -95,7 +97,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, f
                 data={aggregatedData}
                 cx="50%"
                 cy="45%"
-                outerRadius="80%" 
+                outerRadius="80%"
                 dataKey="value"
                 stroke="none"
                 // Labels removed as per request
@@ -106,30 +108,30 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, f
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip 
+              <Tooltip
                 formatter={(value: number) => {
                   const formattedValue = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(value);
                   const percentage = totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : '0';
                   return `${formattedValue} (${percentage}%)`;
                 }}
-                contentStyle={{ 
-                  backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff', 
-                  borderColor: theme === 'dark' ? '#1e293b' : '#e2e8f0', 
-                  color: theme === 'dark' ? '#f1f5f9' : '#0f172a', 
+                contentStyle={{
+                  backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                  borderColor: theme === 'dark' ? '#1e293b' : '#e2e8f0',
+                  color: theme === 'dark' ? '#f1f5f9' : '#0f172a',
                   borderRadius: '0.5rem',
                   boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                 }}
                 itemStyle={{ color: theme === 'dark' ? '#f1f5f9' : '#0f172a' }}
               />
-              <Legend 
-                verticalAlign="bottom" 
+              <Legend
+                verticalAlign="bottom"
                 align="center"
                 iconType="circle"
                 layout="horizontal"
-                wrapperStyle={{ 
-                  paddingTop: '20px', 
+                wrapperStyle={{
+                  paddingTop: '20px',
                   fontSize: '12px',
-                  width: '100%' 
+                  width: '100%'
                 }}
                 formatter={(value, entry: any) => {
                   const item = aggregatedData.find(d => d.name === value);
