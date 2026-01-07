@@ -87,6 +87,7 @@ function App() {
   const [editingRecord, setEditingRecord] = useState<AssetRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('All');
+  const [filterStatus, setFilterStatus] = useState<string>('All');
 
   // Sidebar State
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -501,7 +502,8 @@ function App() {
     setPropertyPage(1);
     setFdPage(1);
     setFdSearchTerm('');
-  }, [view, selectedProperty]);
+    setCurrentPage(1);
+  }, [view, selectedProperty, filterStatus]);
 
   // Centralized Currency Filter
   const currencyRecords = useMemo(() => {
@@ -586,6 +588,9 @@ function App() {
   // FD Metrics
   const fdRecords = useMemo(() => {
     let fds = currencyRecords.filter(r => r.type === AssetType.FixedDeposit);
+    if (filterStatus !== 'All') {
+      fds = fds.filter(r => r.status === filterStatus);
+    }
     if (fdSearchTerm) {
       fds = fds.filter(r => r.name.toLowerCase().includes(fdSearchTerm.toLowerCase()));
     }
@@ -601,7 +606,7 @@ function App() {
       fds.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }
     return fds;
-  }, [currencyRecords, fdSort, fdSearchTerm]);
+  }, [currencyRecords, fdSort, fdSearchTerm, filterStatus]);
 
   const fdStats = useMemo(() => {
     const activeFDs = currencyRecords.filter(r => r.type === AssetType.FixedDeposit && r.status === AssetStatus.Active);
@@ -621,11 +626,12 @@ function App() {
     return currencyRecords
       .filter(r =>
         (filterType === 'All' || r.type === filterType) &&
+        (filterStatus === 'All' || r.status === filterStatus) &&
         (r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           r.remarks?.toLowerCase().includes(searchTerm.toLowerCase()))
       )
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [currencyRecords, searchTerm, filterType]);
+  }, [currencyRecords, searchTerm, filterType, filterStatus]);
 
   const sortedRecords = useMemo(() => {
     if (!sortConfig) return filteredRecords;
@@ -1242,6 +1248,16 @@ function App() {
 
                       <div className="flex items-center gap-2 text-xs">
                         <select
+                          value={filterStatus}
+                          onChange={(e) => setFilterStatus(e.target.value)}
+                          className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-2 focus:outline-none"
+                        >
+                          <option value="All">All Status</option>
+                          <option value="Active">Active Only</option>
+                          <option value="Mature">Mature Only</option>
+                        </select>
+
+                        <select
                           value={fdRowsPerPage}
                           onChange={(e) => { setFdRowsPerPage(Number(e.target.value)); setFdPage(1); }}
                           className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-2 focus:outline-none"
@@ -1382,6 +1398,16 @@ function App() {
                       {Object.values(AssetType).map(t => (
                         <option key={t} value={t}>{t}</option>
                       ))}
+                    </select>
+
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
+                    >
+                      <option value="All">All Status</option>
+                      <option value="Active">Active Only</option>
+                      <option value="Mature">Mature Only</option>
                     </select>
 
                     {selectedIds.size > 0 && (
