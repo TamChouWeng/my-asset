@@ -1079,14 +1079,14 @@ function App() {
                             <ArrowDownRight size={16} className="text-red-500" />
                             <span className="text-sm">{t('prop_invested')}</span>
                           </div>
-                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(propertyMetrics.totalInvested)}</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(propertyMetrics.totalInvested, selectedCurrency)}</p>
                         </div>
                         <div className="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
                           <div className="flex items-center gap-2 mb-2 text-slate-500 dark:text-slate-400">
                             <ArrowUpRight size={16} className="text-emerald-500" />
                             <span className="text-sm">{t('prop_returned')}</span>
                           </div>
-                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(propertyMetrics.totalReturned)}</p>
+                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(propertyMetrics.totalReturned, selectedCurrency)}</p>
                         </div>
                         <div className="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
                           <div className="flex items-center gap-2 mb-2 text-slate-500 dark:text-slate-400">
@@ -1094,7 +1094,7 @@ function App() {
                             <span className="text-sm">{t('prop_net_flow')}</span>
                           </div>
                           <p className={`text-xl font-bold ${propertyMetrics.netCashFlow >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                            {propertyMetrics.netCashFlow >= 0 ? '+' : ''}{formatCurrency(propertyMetrics.netCashFlow)}
+                            {propertyMetrics.netCashFlow >= 0 ? '+' : ''}{formatCurrency(propertyMetrics.netCashFlow, selectedCurrency)}
                           </p>
                         </div>
                       </div>
@@ -1300,7 +1300,7 @@ function App() {
                               <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                 <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{item.date}</td>
                                 <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{item.name}</td>
-                                <td className="px-4 py-3 text-right font-medium text-slate-900 dark:text-slate-100">{formatCurrency(item.amount)}</td>
+                                <td className="px-4 py-3 text-right font-medium text-slate-900 dark:text-slate-100">{formatCurrency(item.amount, selectedCurrency)}</td>
                                 <td className="px-4 py-3">
                                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active'
                                     ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
@@ -1313,7 +1313,7 @@ function App() {
                                   {item.maturityDate || '-'}
                                 </td>
                                 <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                                  {formatCurrency(item.interestDividend || 0)}
+                                  {formatCurrency(item.interestDividend || 0, selectedCurrency)}
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="flex items-center justify-center gap-2">
@@ -1465,7 +1465,7 @@ function App() {
                               </td>
                               <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{item.action}</td>
                               <td className="px-4 py-3 text-right font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                                {formatCurrency(item.amount)}
+                                {formatCurrency(item.amount, selectedCurrency)}
                               </td>
                               <td className="px-4 py-3">
                                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active'
