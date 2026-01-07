@@ -407,22 +407,35 @@ function App() {
 
     setIsImporting(true);
     try {
-      const payload = importCandidates.map(r => ({
-        user_id: user.id,
-        date: r.date,
-        type: r.type,
-        name: r.name,
-        action: r.action,
-        unit_price: r.unitPrice,
-        quantity: r.quantity,
-        amount: r.amount,
-        fee: r.fee,
-        interest_dividend: r.interestDividend, // Fallback column
-        maturity_date: r.maturityDate,
-        status: r.status,
-        currency: r.currency,
-        remarks: r.remarks
-      }));
+      const payload = importCandidates.map(r => {
+        // Embed metadata in remarks just like handleSave
+        let finalRemarks = r.remarks || '';
+        finalRemarks = finalRemarks.replace(/\[Rate:\s*[\d.]+%\]/g, '').replace(/\[Int:\s*[\d.]+\]/g, '').trim();
+
+        if (r.interestRate && r.interestRate > 0) {
+          finalRemarks += ` [Rate: ${r.interestRate}%]`;
+        }
+        if (r.type !== AssetType.FixedDeposit && r.interestDividend && r.interestDividend > 0) {
+          finalRemarks += ` [Int: ${r.interestDividend}]`;
+        }
+
+        return {
+          user_id: user.id,
+          date: r.date,
+          type: r.type,
+          name: r.name,
+          action: r.action,
+          unit_price: r.unitPrice || 0,
+          quantity: r.quantity || 0,
+          amount: r.amount,
+          fee: r.fee || 0,
+          // Columns missing in DB: interest_rate, interest_dividend (stored in remarks)
+          maturity_date: r.maturityDate || null,
+          status: r.status,
+          currency: r.currency || 'MYR',
+          remarks: finalRemarks.trim()
+        };
+      });
 
       const { error } = await supabase.from('assets').insert(payload);
       if (error) throw error;

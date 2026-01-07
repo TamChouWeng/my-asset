@@ -17,20 +17,29 @@ export const downloadCSV = (data: AssetRecord[]) => {
     'Remarks'
   ];
 
+  const escapeCSV = (val: any) => {
+    if (val === null || val === undefined) return '';
+    const str = String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
   const rows = data.map(item => [
-    item.date,
-    item.type,
-    `"${item.name}"`, // Quote strings to handle commas
-    item.action,
-    item.unitPrice || '',
-    item.quantity || '',
-    item.amount,
-    item.fee || '',
-    item.interestDividend || '',
-    item.maturityDate || '',
-    item.status,
-    item.currency || 'MYR',
-    `"${item.remarks || ''}"`
+    escapeCSV(item.date),
+    escapeCSV(item.type),
+    escapeCSV(item.name),
+    escapeCSV(item.action),
+    escapeCSV(item.unitPrice),
+    escapeCSV(item.quantity),
+    escapeCSV(item.amount),
+    escapeCSV(item.fee),
+    escapeCSV(item.interestDividend),
+    escapeCSV(item.maturityDate),
+    escapeCSV(item.status),
+    escapeCSV(item.currency || 'MYR'),
+    escapeCSV(item.remarks)
   ]);
 
   const csvContent = [
