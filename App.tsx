@@ -1228,45 +1228,40 @@ function App() {
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('title_fixed_deposit')}</h3>
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors flex flex-col">
+                  {/* Unified Header with Search & Filters */}
+                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4 bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input
+                        type="text"
+                        placeholder="Search Name..."
+                        value={fdSearchTerm}
+                        onChange={(e) => setFdSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-slate-400"
+                      />
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                      <div className="relative flex-1 sm:w-64">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input
-                          type="text"
-                          placeholder="Search Name..."
-                          value={fdSearchTerm}
-                          onChange={(e) => setFdSearchTerm(e.target.value)}
-                          className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
+                    <div className="flex gap-4">
+                      <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
+                      >
+                        <option value="All">All Status</option>
+                        <option value="Active">Active Only</option>
+                        <option value="Mature">Mature Only</option>
+                      </select>
 
-                      <div className="flex items-center gap-2 text-xs">
-                        <select
-                          value={filterStatus}
-                          onChange={(e) => setFilterStatus(e.target.value)}
-                          className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-2 focus:outline-none"
-                        >
-                          <option value="All">All Status</option>
-                          <option value="Active">Active Only</option>
-                          <option value="Mature">Mature Only</option>
-                        </select>
-
-                        <select
-                          value={fdRowsPerPage}
-                          onChange={(e) => { setFdRowsPerPage(Number(e.target.value)); setFdPage(1); }}
-                          className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-2 focus:outline-none"
-                        >
-                          <option value={10}>10 / page</option>
-                          <option value={20}>20 / page</option>
-                          <option value={50}>50 / page</option>
-                        </select>
-                      </div>
+                      <select
+                        value={fdRowsPerPage}
+                        onChange={(e) => { setFdRowsPerPage(Number(e.target.value)); setFdPage(1); }}
+                        className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
+                      >
+                        <option value={10}>10 / page</option>
+                        <option value={20}>20 / page</option>
+                        <option value={50}>50 / page</option>
+                      </select>
                     </div>
                   </div>
 
@@ -1370,60 +1365,71 @@ function App() {
                         </div>
                       )}
                     </div>
-                  )}
+                  )
+                  }
                 </div>
               </motion.div>
             )}
 
             {view === 'list' && (
               <motion.div variants={itemVariants} className="space-y-6">
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col md:flex-row gap-4 transition-colors">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <input
-                      type="text"
-                      placeholder={t('search_placeholder')}
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-slate-400"
-                    />
-                  </div>
-                  <div className="flex gap-4">
-                    <select
-                      value={filterType}
-                      onChange={(e) => setFilterType(e.target.value)}
-                      className="px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
-                    >
-                      <option value="All">{t('all_types')}</option>
-                      {Object.values(AssetType).map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
-
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className="px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
-                    >
-                      <option value="All">All Status</option>
-                      <option value="Active">Active Only</option>
-                      <option value="Mature">Mature Only</option>
-                    </select>
-
-                    {selectedIds.size > 0 && (
-                      <button
-                        onClick={handleBatchDelete}
-                        className="px-4 py-2 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors flex items-center gap-2"
-                      >
-                        <Trash2 size={18} />
-                        <span className="hidden sm:inline">{t('btn_delete_selected')}</span>
-                        <span className="sm:hidden">({selectedIds.size})</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
                 <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors flex flex-col">
+                  {/* Unified Header with Search & Filters */}
+                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4 bg-slate-50/50 dark:bg-slate-900/50">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                      <input
+                        type="text"
+                        placeholder={t('search_placeholder')}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-slate-400"
+                      />
+                    </div>
+                    <div className="flex gap-4">
+                      <select
+                        value={filterType}
+                        onChange={(e) => setFilterType(e.target.value)}
+                        className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
+                      >
+                        <option value="All">{t('all_types')}</option>
+                        {Object.values(AssetType).map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
+                      >
+                        <option value="All">All Status</option>
+                        <option value="Active">Active Only</option>
+                        <option value="Mature">Mature Only</option>
+                      </select>
+
+                      <select
+                        value={itemsPerPage}
+                        onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                        className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
+                      >
+                        <option value={10}>10 / page</option>
+                        <option value={20}>20 / page</option>
+                        <option value={50}>50 / page</option>
+                      </select>
+
+                      {selectedIds.size > 0 && (
+                        <button
+                          onClick={handleBatchDelete}
+                          className="px-4 py-2 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors flex items-center gap-2"
+                        >
+                          <Trash2 size={18} />
+                          <span className="hidden sm:inline">{t('btn_delete_selected')}</span>
+                          <span className="sm:hidden">({selectedIds.size})</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <div className="overflow-x-auto w-full">
                     <table className="w-full text-sm text-left min-w-[900px]">
                       <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
