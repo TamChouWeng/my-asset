@@ -1169,7 +1169,14 @@ function App() {
                                       </span>
                                     </td>
                                     <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.amount)}</td>
-                                    <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">{item.status}</td>
+                                    <td className="px-4 py-3">
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active'
+                                        ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                                        }`}>
+                                        {item.status}
+                                      </span>
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
