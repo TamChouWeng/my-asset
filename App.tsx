@@ -1733,8 +1733,8 @@ function App() {
                   </div>
                 </div>
 
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-4 text-center">
-                  Version: Beta 2.2
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-mono mt-4 text-center">
+                  Version: Beta 2.3
                 </p>
               </motion.div>
             )}

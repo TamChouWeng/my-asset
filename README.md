@@ -2,7 +2,7 @@
  
 **My Asset** is a robust, cloud-native application designed to help you track, visualize, and manage your financial portfolio. Built with React and Supabase, it offers enterprise-grade data security, real-time synchronization, and AI-powered insights.
 
-**Current Version:** Beta 2.2
+**Current Version:** Beta 2.3 (Stable)
 
 > **Note:** This build is fully compatible and optimized for hosting on **GitHub Pages**.
 
@@ -16,11 +16,13 @@
     - **EPF** (Self/Employee contributions)
     - **Property** (Rental/Maintenance/Renovation tracking)
     - **Custom Assets** (Gold, etc.)
-- **CSV Import Engine:** *New in Beta 2.2*
+- **CSV Import Engine:** *Enhanced in Beta 2.3*
     - Manual upload support for transaction history.
+    - **Smart Metadata Parsing:** Automatically extracts interest rates and dividends from remarks.
     - **Duplicate Detection:** Automatic verification against existing records to prevent double-counting.
     - **Batch Confirmation:** Review records in a summary modal before committing to the database.
     - **Date Normalization:** Automatic conversion of various date formats (DD-MM-YY, etc.) to ISO (YYYY-MM-DD).
+    - **Net Asset Calculation:** *New in Beta 2.3* - Correctly handles "Sold" actions as deductions for Stocks, ETFs, and REITs.
 - **Advanced Form Validation:** Smart forms that adapt fields based on asset type.
 - **Batch Operations:** Efficiently delete multiple records at once.
 
