@@ -22,7 +22,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const constraintsRef = useRef(null);
@@ -78,7 +78,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
     try {
       // Fresh instance right before the call to get the latest key
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
+
       const activeAssets = records.filter(r => r.status === 'Active');
       const simplifiedRecords = activeAssets.map(r => ({
         type: r.type,
@@ -129,16 +129,16 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
         const chunkText = chunk.text;
         if (chunkText) {
           fullText += chunkText;
-          setMessages(prev => 
+          setMessages(prev =>
             prev.map(msg => msg.id === botMsgId ? { ...msg, text: fullText } : msg)
           );
         }
       }
     } catch (error: any) {
       console.error("Gemini AI Error:", error);
-      
+
       const errorMessage = error?.message || "";
-      
+
       if (errorMessage.includes("API Key") || errorMessage.includes("Requested entity was not found")) {
         // Reset and prompt for key as per guideline
         await handleOpenSelectKey();
@@ -164,12 +164,12 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   const formatMessage = (text: string) => {
     if (!text) return null;
-    
+
     const lines = text.split('\n');
     return lines.map((line, i) => {
       const isListItem = line.trim().startsWith('* ') || line.trim().startsWith('- ');
       const content = isListItem ? line.trim().substring(2) : line;
-      
+
       // Basic bold formatting support
       const parts = content.split(/(\*\*.*?\*\*)/g);
       const formattedContent = parts.map((part, index) => {
@@ -189,9 +189,9 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
       }
 
       return (
-         <div key={i} className={`min-h-[1.25rem] ${line.trim() === '' ? 'h-2' : 'mb-1'}`}>
-           {line.trim() === '' ? null : formattedContent}
-         </div>
+        <div key={i} className={`min-h-[1.25rem] ${line.trim() === '' ? 'h-2' : 'mb-1'}`}>
+          {line.trim() === '' ? null : formattedContent}
+        </div>
       );
     });
   };
@@ -199,7 +199,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
   return (
     <>
       <div ref={constraintsRef} className="fixed inset-0 pointer-events-none z-[45]" />
-      
+
       <motion.button
         drag
         dragConstraints={constraintsRef}
@@ -233,7 +233,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
             className="fixed top-0 right-0 z-[55] w-full sm:w-[450px] h-full bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800"
           >
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-70" />
-            
+
             <div className="px-6 py-5 bg-white dark:bg-slate-900 flex justify-between items-center shrink-0 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 dark:bg-blue-500/20 rounded-xl text-blue-600 dark:text-blue-400">
@@ -248,21 +248,21 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <button 
+                <button
                   onClick={handleOpenSelectKey}
                   title="Configure API Key"
                   className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-all"
                 >
                   <Key size={18} />
                 </button>
-                <button 
+                <button
                   onClick={() => setMessages([{ id: 'welcome', role: 'model', text: t('chatbot_welcome') }])}
                   title="Reset Chat"
                   className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-all"
                 >
                   <RefreshCcw size={18} />
                 </button>
-                <button 
+                <button
                   onClick={() => setIsOpen(false)}
                   className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-500/10 rounded-full transition-all"
                 >
@@ -280,30 +280,29 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[90%] p-4 rounded-2xl text-sm leading-relaxed ${
-                      msg.role === 'user'
+                    className={`max-w-[90%] p-4 rounded-2xl text-sm leading-relaxed ${msg.role === 'user'
                         ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20 rounded-tr-none'
-                        : msg.isError 
-                            ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-tl-none border border-red-200'
-                            : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-700 rounded-tl-none'
-                    }`}
+                        : msg.isError
+                          ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200 rounded-tl-none border border-red-200'
+                          : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-slate-100 dark:border-slate-700 rounded-tl-none'
+                      }`}
                   >
                     {formatMessage(msg.text)}
                     {msg.id === 'welcome' && (
-                       <div className="mt-4 flex flex-wrap gap-2">
-                          <button 
-                             onClick={() => handleSendMessage(undefined, "Analyze my assets")}
-                             className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-xs hover:bg-blue-100 transition-colors"
-                          >
-                             Analyze my assets
-                          </button>
-                          <button 
-                             onClick={() => handleSendMessage(undefined, "How is my property performing?")}
-                             className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs hover:bg-emerald-100 transition-colors"
-                          >
-                             Property performance
-                          </button>
-                       </div>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleSendMessage(undefined, "Analyze my assets")}
+                          className="px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg text-xs hover:bg-blue-100 transition-colors"
+                        >
+                          Analyze my assets
+                        </button>
+                        <button
+                          onClick={() => handleSendMessage(undefined, "How is my property performing?")}
+                          className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs hover:bg-emerald-100 transition-colors"
+                        >
+                          Property performance
+                        </button>
+                      </div>
                     )}
                   </div>
                 </motion.div>
