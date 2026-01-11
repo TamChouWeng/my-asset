@@ -34,6 +34,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  RefreshCw,
   Moon,
   Sun,
   Globe,
@@ -965,6 +966,15 @@ function App() {
 
               {view !== 'settings' && (
                 <div className="flex gap-2 w-full md:w-auto">
+                  <button
+                    onClick={fetchRecords}
+                    title="Refresh Data"
+                    disabled={isDataLoading}
+                    className="w-10 h-10 flex items-center justify-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <RefreshCw size={20} className={isDataLoading ? "animate-spin" : ""} />
+                  </button>
+
                   <button
                     onClick={() => downloadCSV(currencyRecords)}
                     title={t('btn_export')}
