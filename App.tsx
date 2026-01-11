@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { AssetRecord, AssetType, AssetStatus } from './types';
 import { TRANSLATIONS, Language, PROPERTY_ACTIONS, ACTION_MULTIPLIERS } from './constants';
 import PieChartComponent from './components/PieChartComponent';
+import PerformanceChartComponent from './components/PerformanceChartComponent';
 import TransactionForm from './components/TransactionForm';
 import Chatbot from './components/Chatbot';
 import LoginScreen from './components/LoginScreen';
@@ -1014,25 +1015,37 @@ function App() {
             {view === 'dashboard' && (
               <motion.div variants={itemVariants} className="space-y-4 h-full flex flex-col">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:min-h-[calc(100vh-7rem)]">
-                  <div className="lg:col-span-3 h-full">
-                    {currencyRecords.length > 0 ? (
-                      <PieChartComponent
-                        data={currencyRecords}
-                        theme={theme}
-                        t={t}
-                        filterType={filterType}
-                        onFilterChange={setFilterType}
-                      />
-                    ) : (
-                      <div className="h-full flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 text-slate-400">
-                        <Wallet size={48} className="mb-4 opacity-50" />
-                        <p className="text-lg font-medium">No {selectedCurrency} assets found</p>
-                        <p className="text-sm">Add a new asset to see your portfolio breakdown.</p>
-                      </div>
-                    )}
+                  <div className="lg:col-span-3 h-full flex flex-col gap-4">
+                    <div className="h-[250px] lg:h-[45%]">
+                      {currencyRecords.length > 0 ? (
+                        <PieChartComponent
+                          data={currencyRecords}
+                          theme={theme}
+                          t={t}
+                          filterType={filterType}
+                          onFilterChange={setFilterType}
+                        />
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 text-slate-400">
+                          <Wallet size={48} className="mb-4 opacity-50" />
+                          <p className="text-lg font-medium">No {selectedCurrency} assets found</p>
+                          <p className="text-sm">Add a new asset to see your portfolio breakdown.</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="h-[250px] lg:h-[55%] flex-1">
+                      {currencyRecords.length > 0 && (
+                        <PerformanceChartComponent
+                          data={currencyRecords}
+                          theme={theme}
+                          currentFilter={filterType}
+                        />
+                      )}
+                    </div>
                   </div>
                   <div className="flex flex-col gap-4 h-full">
-                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-1">
+                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-[1]">
                       <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full shrink-0">
                         <Wallet size={24} />
                       </div>
@@ -1044,7 +1057,7 @@ function App() {
                       </div>
                     </motion.div>
 
-                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-1">
+                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-[1]">
                       <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full shrink-0">
                         <TrendingUp size={24} />
                       </div>
@@ -1057,7 +1070,7 @@ function App() {
                       </div>
                     </motion.div>
 
-                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-1">
+                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-[5]">
                       <div className="p-3 bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full shrink-0">
                         <Table2 size={24} />
                       </div>
