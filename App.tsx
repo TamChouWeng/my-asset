@@ -1016,7 +1016,7 @@ function App() {
               <motion.div variants={itemVariants} className="space-y-4 h-full flex flex-col">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:min-h-[calc(100vh-7rem)]">
                   <div className="lg:col-span-3 h-full flex flex-col gap-4">
-                    <div className="h-[250px] lg:h-[45%]">
+                    <div className="min-h-[350px] lg:min-h-0 lg:h-[45%]">
                       {currencyRecords.length > 0 ? (
                         <PieChartComponent
                           data={currencyRecords}
@@ -1034,7 +1034,7 @@ function App() {
                       )}
                     </div>
 
-                    <div className="h-[250px] lg:h-[55%] flex-1">
+                    <div className="min-h-[350px] lg:min-h-0 lg:h-[55%] flex-1">
                       {currencyRecords.length > 0 && (
                         <PerformanceChartComponent
                           data={currencyRecords}
