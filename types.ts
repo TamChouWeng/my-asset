@@ -56,3 +56,12 @@ export interface AuditLog {
   created_at: string;
   changed_by: string;
 }
+
+declare global {
+  interface Window {
+    aistudio?: {
+      openSelectKey: () => Promise<void>;
+      hasSelectedApiKey: () => Promise<boolean>;
+    };
+  }
+}
