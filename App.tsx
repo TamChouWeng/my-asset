@@ -1040,6 +1040,7 @@ function App() {
                           data={currencyRecords}
                           theme={theme}
                           currentFilter={filterType}
+                          selectedCurrency={selectedCurrency}
                         />
                       )}
                     </div>

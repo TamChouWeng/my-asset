@@ -8,11 +8,12 @@ interface PerformanceChartComponentProps {
     data: AssetRecord[];
     theme: 'light' | 'dark';
     currentFilter: string;
+    selectedCurrency: string;
 }
 
 type TimeRange = '1W' | '1M' | '1Y';
 
-const PerformanceChartComponent: React.FC<PerformanceChartComponentProps> = ({ data, theme, currentFilter }) => {
+const PerformanceChartComponent: React.FC<PerformanceChartComponentProps> = ({ data, theme, currentFilter, selectedCurrency }) => {
     const [timeRange, setTimeRange] = useState<TimeRange>('1M');
 
     // Helper to get aggregation start date
@@ -132,8 +133,8 @@ const PerformanceChartComponent: React.FC<PerformanceChartComponentProps> = ({ d
                             key={range}
                             onClick={() => setTimeRange(range)}
                             className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${timeRange === range
-                                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
-                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm'
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                                 }`}
                         >
                             {range}
@@ -174,7 +175,7 @@ const PerformanceChartComponent: React.FC<PerformanceChartComponentProps> = ({ d
                                         <div className={`${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border p-3 rounded-lg shadow-lg`}>
                                             <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>{label}</p>
                                             <p className={`text-lg font-bold ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>
-                                                {new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(payload[0].value as number)}
+                                                {new Intl.NumberFormat(selectedCurrency === 'USD' ? 'en-US' : 'en-MY', { style: 'currency', currency: selectedCurrency }).format(payload[0].value as number)}
                                             </p>
                                         </div>
                                     );
