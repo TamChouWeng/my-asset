@@ -18,20 +18,81 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, f
   const aggregatedData = useMemo(() => {
     const map = new Map<string, number>();
 
+    // Step 1: Identify Active Assets
+    // We only want to list assets that are currently marked as Active.
+    // However, we must process ALL transactions (Active + Sold) for those assets to get the true net quantity.
+    const activeAssetNames = new Set<string>();
     data.forEach(item => {
-      // Only consider Active assets
       if (item.status === AssetStatus.Active) {
+        activeAssetNames.add(item.name);
+      }
+    });
+
+    // Step 2: Calculate Holdings for Active Assets
+    // We track Total Buy Cost and Total Buy Quantity to calculate Average Cost Basis
+    const holdings = new Map<string, {
+      netQty: number;
+      netValue: number;
+      totalBuyQty: number;
+      totalBuyCost: number;
+      type: AssetType;
+    }>();
+
+    data.forEach(item => {
+      // Skip if the asset itself is not active
+      if (!activeAssetNames.has(item.name)) return;
+
+      const multiplier = ACTION_MULTIPLIERS[item.action.toLowerCase()] ?? 1;
+      const current = holdings.get(item.name) || {
+        netQty: 0,
+        netValue: 0,
+        totalBuyQty: 0,
+        totalBuyCost: 0,
+        type: item.type,
+      };
+
+      // Accumulate Net Quantity (All transactions)
+      if (item.quantity) {
+        current.netQty += (item.quantity * multiplier);
+      }
+
+      // Accumulate Net Amount (for non-unit assets)
+      current.netValue += (item.amount * multiplier);
+
+      // Track Cost Basis (Only "Buy"/Inflow transactions)
+      // We use multiplier > 0 to identify inflows (Buy, Contribute, etc)
+      // And strict handling for unit-based assets to avoid mixing "Renovation" etc if they hypothetically applied
+      if (multiplier > 0 && item.quantity && item.quantity > 0) {
+        current.totalBuyQty += item.quantity;
+        current.totalBuyCost += item.amount;
+      }
+
+      holdings.set(item.name, current);
+    });
+
+    // Step 3: Compute Chart Values
+    holdings.forEach((data, name) => {
+      let finalValue = data.netValue;
+
+      // For Unit-based assets, calculate Value based on Average Cost of Remaining Units
+      // Value = Remaining Units * (Total Buy Cost / Total Buy Units)
+      const isUnitBased = [AssetType.Stock, AssetType.ETF, AssetType.REIT].includes(data.type);
+
+      if (isUnitBased && data.netQty > 0) {
+        // Avoid division by zero
+        const avgCost = data.totalBuyQty > 0 ? (data.totalBuyCost / data.totalBuyQty) : 0;
+        finalValue = data.netQty * avgCost;
+      }
+
+      if (finalValue > 0) {
         if (filterType === 'All') {
           // Group by Asset Type
-          const current = map.get(item.type) || 0;
-          const multiplier = ACTION_MULTIPLIERS[item.action.toLowerCase()] ?? 1;
-          map.set(item.type, current + (item.amount * multiplier));
+          const currentTotal = map.get(data.type) || 0;
+          map.set(data.type, currentTotal + finalValue);
         } else {
           // Filter by selected Type, Group by Name
-          if (item.type === filterType) {
-            const current = map.get(item.name) || 0;
-            const multiplier = ACTION_MULTIPLIERS[item.action.toLowerCase()] ?? 1;
-            map.set(item.name, current + (item.amount * multiplier));
+          if (data.type === filterType) {
+            map.set(name, finalValue); // Name is unique within type usually, or handled above
           }
         }
       }
@@ -41,24 +102,22 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, f
     let colorIndex = 0;
 
     map.forEach((value, key) => {
-      if (value > 0) {
-        let color: string;
+      let color: string;
 
-        if (filterType === 'All') {
-          // Use predefined colors for types
-          color = COLORS[key as AssetType] || '#cccccc';
-        } else {
-          // Cycle through palette for individual items
-          color = DETAIL_COLORS[colorIndex % DETAIL_COLORS.length];
-          colorIndex++;
-        }
-
-        result.push({
-          name: key,
-          value: parseFloat(value.toFixed(2)),
-          color: color
-        });
+      if (filterType === 'All') {
+        // Use predefined colors for types
+        color = COLORS[key as AssetType] || '#cccccc';
+      } else {
+        // Cycle through palette for individual items
+        color = DETAIL_COLORS[colorIndex % DETAIL_COLORS.length];
+        colorIndex++;
       }
+
+      result.push({
+        name: key,
+        value: parseFloat(value.toFixed(2)),
+        color: color
+      });
     });
 
     return result.sort((a, b) => b.value - a.value);
