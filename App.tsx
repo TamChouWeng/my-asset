@@ -9,6 +9,7 @@ import LoginScreen from './components/LoginScreen';
 import { useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
 import { downloadCSV, parseCSV, normalizeDate } from './utils/csvHelper';
+import { formatCurrency, CURRENCIES, getCurrencyOptions } from './utils/currencyUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImportConfirmationModal from './components/ImportConfirmationModal';
 import {
@@ -750,10 +751,8 @@ function App() {
     setSelectedIds(newSelected);
   };
 
-  const formatCurrency = (val: number, currency: string = 'MYR') => {
-    const locale = currency === 'USD' ? 'en-US' : 'en-MY';
-    return new Intl.NumberFormat(locale, { style: 'currency', currency: currency }).format(val);
-  };
+  // Replaced by imported formatCurrency from utils
+  // const formatCurrency = (val: number, currency: string = 'MYR') => ... 
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -1024,6 +1023,7 @@ function App() {
                           t={t}
                           filterType={filterType}
                           onFilterChange={setFilterType}
+                          selectedCurrency={selectedCurrency}
                         />
                       ) : (
                         <div className="h-full flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 text-slate-400">
@@ -1659,8 +1659,9 @@ function App() {
                         onChange={(e) => setSelectedCurrency(e.target.value)}
                         className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg p-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
                       >
-                        <option value="MYR">MYR</option>
-                        <option value="USD">USD</option>
+                        {getCurrencyOptions().map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                       </select>
                     </div>
 

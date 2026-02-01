@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { motion } from 'framer-motion';
 import { AssetRecord, AssetStatus, ChartDataPoint, AssetType } from '../types';
 import { COLORS, DETAIL_COLORS, ACTION_MULTIPLIERS } from '../constants';
+import { formatCurrency } from '../utils/currencyUtils';
 
 interface PieChartComponentProps {
   data: AssetRecord[];
@@ -10,9 +11,10 @@ interface PieChartComponentProps {
   t: (key: string) => string;
   filterType: string;
   onFilterChange: (type: string) => void;
+  selectedCurrency: string;
 }
 
-const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, filterType, onFilterChange }) => {
+const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, filterType, onFilterChange, selectedCurrency }) => {
 
   // Aggregate data based on filter
   const aggregatedData = useMemo(() => {
@@ -169,7 +171,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, f
               </Pie>
               <Tooltip
                 formatter={(value: number) => {
-                  const formattedValue = new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(value);
+                  const formattedValue = formatCurrency(value, selectedCurrency);
                   const percentage = totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : '0';
                   return `${formattedValue} (${percentage}%)`;
                 }}

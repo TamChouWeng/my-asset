@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AssetRecord, AssetType, AssetStatus } from '../types';
 import { X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getCurrencyOptions } from '../utils/currencyUtils';
 
 interface TransactionFormProps {
   isOpen: boolean;
@@ -253,7 +254,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
               </div>
 
               {/* Row 3: Action & Status - Stack on mobile */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
                     Action <MandatoryMark />
@@ -314,6 +315,20 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                   >
                     {Object.values(AssetStatus).map(s => (
                       <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    Currency <MandatoryMark />
+                  </label>
+                  <select
+                    value={formData.currency}
+                    onChange={e => setFormData({ ...formData, currency: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                  >
+                    {getCurrencyOptions().map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.value}</option>
                     ))}
                   </select>
                 </div>

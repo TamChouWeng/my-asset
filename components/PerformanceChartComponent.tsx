@@ -3,6 +3,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { motion } from 'framer-motion';
 import { AssetRecord, AssetStatus } from '../types';
 import { ACTION_MULTIPLIERS } from '../constants';
+import { formatCurrency } from '../utils/currencyUtils';
 
 interface PerformanceChartComponentProps {
     data: AssetRecord[];
@@ -175,7 +176,7 @@ const PerformanceChartComponent: React.FC<PerformanceChartComponentProps> = ({ d
                                         <div className={`${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} border p-3 rounded-lg shadow-lg`}>
                                             <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'} mb-1`}>{label}</p>
                                             <p className={`text-lg font-bold ${theme === 'dark' ? 'text-slate-100' : 'text-slate-900'}`}>
-                                                {new Intl.NumberFormat(selectedCurrency === 'USD' ? 'en-US' : 'en-MY', { style: 'currency', currency: selectedCurrency }).format(payload[0].value as number)}
+                                                {formatCurrency(payload[0].value as number, selectedCurrency)}
                                             </p>
                                         </div>
                                     );
