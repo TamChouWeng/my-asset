@@ -1,55 +1,35 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { AssetRecord, AssetType, AssetStatus } from './types';
 import { TRANSLATIONS, Language, PROPERTY_ACTIONS, ACTION_MULTIPLIERS } from './constants';
-import PieChartComponent from './components/PieChartComponent';
-import PerformanceChartComponent from './components/PerformanceChartComponent';
 import TransactionForm from './components/TransactionForm';
 import Chatbot from './components/Chatbot';
 import LoginScreen from './components/LoginScreen';
 import { useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
 import { downloadCSV, parseCSV, normalizeDate } from './utils/csvHelper';
-import { formatCurrency, CURRENCIES, getCurrencyOptions } from './utils/currencyUtils';
+import { formatCurrency, CURRENCIES } from './utils/currencyUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImportConfirmationModal from './components/ImportConfirmationModal';
+import DashboardView from './components/views/DashboardView';
+import PropertyView from './components/views/PropertyView';
+import FixedDepositView from './components/views/FixedDepositView';
+import RecordListView from './components/views/RecordListView';
+import SettingsView from './components/views/SettingsView';
+
 import {
   LayoutDashboard,
   Table2,
   Plus,
   Download,
-  Trash2,
-  Edit2,
-  TrendingUp,
-  Wallet,
-  Search,
-  Filter,
   Building2,
-  ArrowUpRight,
-  ArrowDownRight,
-  ArrowUpDown,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  ListFilter,
   Menu,
   X,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
   RefreshCw,
-  Moon,
-  Sun,
-  Globe,
-  LogOut,
-  Database,
   Loader2,
-  User,
-  Lock,
-  FileJson,
-  ChevronDown,
-  ChevronUp,
   Landmark,
-  PiggyBank,
   Upload
 } from 'lucide-react';
 
@@ -231,7 +211,7 @@ function App() {
 
   // --- ACTIONS ---
 
-  const handleSave = async (data: Omit<AssetRecord, 'id'>) => {
+  const handleSave = React.useCallback(async (data: Omit<AssetRecord, 'id'>) => {
     if (!user || !user.id) {
       alert("You must be logged in to save records.");
       return;
@@ -289,9 +269,11 @@ function App() {
           interestDividend: data.interestDividend || 0
         };
 
-        const newRecords = records.map(r => r.id === editingRecord.id ? updatedRecord : r);
-        setRecords(newRecords);
-        checkMaturity(newRecords);
+        setRecords(prev => {
+          const newRecords = prev.map(r => r.id === editingRecord.id ? updatedRecord : r);
+          checkMaturity(newRecords);
+          return newRecords;
+        });
 
       } else {
         const { data: inserted, error } = await supabase
@@ -328,9 +310,11 @@ function App() {
             currency: newRecord.currency || 'MYR',
             remarks: newRecord.remarks
           };
-          const newRecords = [mappedNew, ...records];
-          setRecords(newRecords);
-          checkMaturity(newRecords);
+          setRecords(prev => {
+            const newRecords = [mappedNew, ...prev];
+            checkMaturity(newRecords);
+            return newRecords;
+          });
         }
       }
       setEditingRecord(null);
@@ -338,27 +322,30 @@ function App() {
       console.error("Error saving:", error);
       alert(`Failed to save record: ${error.message || 'Unknown error'}`);
     }
-  };
+  }, [user, editingRecord]);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = React.useCallback(async (id: string) => {
     if (window.confirm('Are you sure you want to delete this record?')) {
       try {
         const { error } = await supabase.from('assets').delete().eq('id', id);
         if (error) throw error;
 
         setRecords(prev => prev.filter(r => r.id !== id));
-        if (selectedIds.has(id)) {
-          const newSelected = new Set(selectedIds);
-          newSelected.delete(id);
-          setSelectedIds(newSelected);
-        }
+        setSelectedIds(prev => {
+          if (prev.has(id)) {
+            const newSelected = new Set(prev);
+            newSelected.delete(id);
+            return newSelected;
+          }
+          return prev;
+        });
       } catch (error) {
         console.error("Error deleting:", error);
       }
     }
-  };
+  }, [selectedIds]);
 
-  const handleBatchDelete = async () => {
+  const handleBatchDelete = React.useCallback(async () => {
     if (window.confirm(`Are you sure you want to delete ${selectedIds.size} records?`)) {
       try {
         const ids = Array.from(selectedIds);
@@ -371,7 +358,7 @@ function App() {
         console.error("Error batch deleting:", error);
       }
     }
-  };
+  }, [selectedIds]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -704,55 +691,66 @@ function App() {
     return sortedPropertyRecords.slice(start, start + propertyRowsPerPage);
   }, [sortedPropertyRecords, propertyPage, propertyRowsPerPage]);
 
-  const handleEdit = (record: AssetRecord) => {
+  const handleEdit = React.useCallback((record: AssetRecord) => {
     setEditingRecord(record);
     setIsFormOpen(true);
-  };
+  }, []);
 
-  const handleSort = (key: keyof AssetRecord) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
+  const handleSort = React.useCallback((key: keyof AssetRecord) => {
+    setSortConfig(current => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (current && current.key === key && current.direction === 'asc') {
+        direction = 'desc';
+      }
+      return { key, direction };
+    });
+  }, []);
 
-  const handlePropertySort = (key: keyof AssetRecord) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (propertySort && propertySort.key === key && propertySort.direction === 'asc') {
-      direction = 'desc';
-    }
-    setPropertySort({ key, direction });
-  };
+  const handlePropertySort = React.useCallback((key: keyof AssetRecord) => {
+    setPropertySort(current => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (current && current.key === key && current.direction === 'asc') {
+        direction = 'desc';
+      }
+      return { key, direction };
+    });
+  }, []);
 
-  const handleFdSort = (key: keyof AssetRecord) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (fdSort && fdSort.key === key && fdSort.direction === 'asc') {
-      direction = 'desc';
-    }
-    setFdSort({ key, direction });
-  };
+  const handleFdSort = React.useCallback((key: keyof AssetRecord) => {
+    setFdSort(current => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (current && current.key === key && current.direction === 'asc') {
+        direction = 'desc';
+      }
+      return { key, direction };
+    });
+  }, []);
 
-  const toggleSelectAll = () => {
+  const toggleSelectAll = React.useCallback(() => {
+    // Only toggle based on CURRENT sortedRecords length, but we need sortedRecords in dep array which changes often.
+    // Ideally we pass ids, but sortedRecords is derived.
+    // For now, let's keep it simple. If sortedRecords changes, this function changes, causing List to re-render.
+    // Since List depends on sortedRecords anyway, this is fine.
+    // Wait, we can't access state inside callback without closure or ref.
+    // We already have closure over sortedRecords and selectedIds.
     if (selectedIds.size === sortedRecords.length) {
       setSelectedIds(new Set());
     } else {
       setSelectedIds(new Set(sortedRecords.map(r => r.id)));
     }
-  };
+  }, [selectedIds, sortedRecords]);
 
-  const toggleSelect = (id: string) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
-  };
-
-  // Replaced by imported formatCurrency from utils
-  // const formatCurrency = (val: number, currency: string = 'MYR') => ... 
+  const toggleSelect = React.useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(id)) {
+        newSelected.delete(id);
+      } else {
+        newSelected.add(id);
+      }
+      return newSelected;
+    });
+  }, []);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -1012,756 +1010,104 @@ function App() {
             </motion.div>
 
             {view === 'dashboard' && (
-              <motion.div variants={itemVariants} className="space-y-4 h-full flex flex-col">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:min-h-[calc(100vh-7rem)]">
-                  <div className="lg:col-span-3 h-full flex flex-col gap-4">
-                    <div className="min-h-[350px] lg:min-h-0 lg:h-[45%]">
-                      {currencyRecords.length > 0 ? (
-                        <PieChartComponent
-                          data={currencyRecords}
-                          theme={theme}
-                          t={t}
-                          filterType={filterType}
-                          onFilterChange={setFilterType}
-                          selectedCurrency={selectedCurrency}
-                        />
-                      ) : (
-                        <div className="h-full flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 text-slate-400">
-                          <Wallet size={48} className="mb-4 opacity-50" />
-                          <p className="text-lg font-medium">No {selectedCurrency} assets found</p>
-                          <p className="text-sm">Add a new asset to see your portfolio breakdown.</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="min-h-[350px] lg:min-h-0 lg:h-[55%] flex-1">
-                      {currencyRecords.length > 0 && (
-                        <PerformanceChartComponent
-                          data={currencyRecords}
-                          theme={theme}
-                          currentFilter={filterType}
-                          selectedCurrency={selectedCurrency}
-                        />
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-4 h-full">
-                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-[1]">
-                      <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full shrink-0">
-                        <Wallet size={24} />
-                      </div>
-                      <div className="min-w-0 w-full">
-                        <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">
-                          {filterType === 'All' ? t('stat_total_assets') : `Total ${filterType}`}
-                        </p>
-                        <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{formatCurrency(totalValue, selectedCurrency)}</p>
-                      </div>
-                    </motion.div>
-
-                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-[1]">
-                      <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full shrink-0">
-                        <TrendingUp size={24} />
-                      </div>
-                      <div className="min-w-0 w-full">
-                        <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">
-                          {filterType === 'All' ? t('stat_top_asset') : `Top ${filterType} Asset`}
-                        </p>
-                        <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{topAssetMetric.name}</p>
-                        <p className="text-xs text-slate-500 truncate">{formatCurrency(topAssetMetric.value, selectedCurrency)}</p>
-                      </div>
-                    </motion.div>
-
-                    <motion.div whileHover={{ y: -5 }} className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-center items-center gap-2 text-center transition-all flex-[8]">
-                      <div className="p-3 bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 rounded-full shrink-0">
-                        <Table2 size={24} />
-                      </div>
-                      <div className="min-w-0 w-full">
-                        <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">{t('stat_total_records')}</p>
-                        <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{currencyRecords.length}</p>
-                      </div>
-                    </motion.div>
-                  </div>
-                </div>
-              </motion.div>
+              <DashboardView
+                itemVariants={itemVariants}
+                currencyRecords={currencyRecords}
+                theme={theme}
+                t={t}
+                filterType={filterType}
+                onFilterChange={setFilterType}
+                selectedCurrency={selectedCurrency}
+                totalValue={totalValue}
+                topAssetMetric={topAssetMetric}
+              />
             )}
 
             {view === 'property' && (
-              <motion.div variants={itemVariants} className="space-y-6">
-                <div className="bg-white dark:bg-slate-900 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center justify-between transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg">
-                      <Filter size={20} />
-                    </div>
-                    <span className="font-medium text-slate-700 dark:text-slate-300">Select Property:</span>
-                  </div>
-                  <select
-                    value={selectedProperty}
-                    onChange={(e) => setSelectedProperty(e.target.value)}
-                    className="px-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer transition-colors"
-                  >
-                    <option value="All">All Properties</option>
-                    {propertyNames.map(name => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <motion.div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-red-100 dark:bg-red-500/10 text-red-500 dark:text-red-400 rounded-lg">
-                      <Building2 size={20} />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('prop_cash_flow')}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {selectedProperty === 'All' ? t('prop_desc') : `${selectedProperty} - ${t('prop_desc')}`}
-                      </p>
-                    </div>
-                  </div>
-
-                  {!propertyMetrics.hasProperties ? (
-                    <div className="text-center py-10 text-slate-500">
-                      No property records found. Add asset type "Property" to see analysis.
-                    </div>
-                  ) : (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
-                        <div className="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
-                          <div className="flex items-center gap-2 mb-2 text-slate-500 dark:text-slate-400">
-                            <ArrowDownRight size={16} className="text-red-500" />
-                            <span className="text-sm">{t('prop_invested')}</span>
-                          </div>
-                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(propertyMetrics.totalInvested, selectedCurrency)}</p>
-                        </div>
-                        <div className="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
-                          <div className="flex items-center gap-2 mb-2 text-slate-500 dark:text-slate-400">
-                            <ArrowUpRight size={16} className="text-emerald-500" />
-                            <span className="text-sm">{t('prop_returned')}</span>
-                          </div>
-                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(propertyMetrics.totalReturned, selectedCurrency)}</p>
-                        </div>
-                        <div className="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-lg border border-slate-200 dark:border-slate-800">
-                          <div className="flex items-center gap-2 mb-2 text-slate-500 dark:text-slate-400">
-                            <Wallet size={16} className={propertyMetrics.netCashFlow >= 0 ? "text-emerald-500" : "text-red-500"} />
-                            <span className="text-sm">{t('prop_net_flow')}</span>
-                          </div>
-                          <p className={`text-xl font-bold ${propertyMetrics.netCashFlow >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'}`}>
-                            {propertyMetrics.netCashFlow >= 0 ? '+' : ''}{formatCurrency(propertyMetrics.netCashFlow, selectedCurrency)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="relative h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div className="absolute top-0 bottom-0 left-0 bg-red-500 transition-all duration-500" style={{ width: propertyMetrics.totalInvested > 0 ? '100%' : '0%' }}></div>
-                        <div className="absolute top-0 bottom-0 left-0 bg-emerald-500 transition-all duration-500"
-                          style={{ width: propertyMetrics.totalInvested > 0 ? `${(propertyMetrics.totalReturned / propertyMetrics.totalInvested) * 100}%` : '0%' }}>
-                        </div>
-                      </div>
-                      <div className="flex justify-between text-xs text-slate-500 mt-2">
-                        <span>{t('prop_investment_phase')}</span>
-                        <span>{((propertyMetrics.totalReturned / (propertyMetrics.totalInvested || 1)) * 100).toFixed(1)}% {t('prop_recovered')}</span>
-                        <span>{t('prop_profit_phase')}</span>
-                      </div>
-
-                      <div className="mt-8">
-                        <div className="flex justify-between items-center mb-4">
-                          <h4 className="text-md font-medium text-slate-900 dark:text-slate-200">{t('prop_transactions')}</h4>
-                          <div className="flex items-center gap-2 text-xs">
-                            <select
-                              value={propertyRowsPerPage}
-                              onChange={(e) => { setPropertyRowsPerPage(Number(e.target.value)); setPropertyPage(1); }}
-                              className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded px-2 py-1 focus:outline-none"
-                            >
-                              <option value={5}>5 / page</option>
-                              <option value={10}>10 / page</option>
-                              <option value={20}>20 / page</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-col">
-                          <div className="overflow-x-auto w-full">
-                            <table className="w-full text-sm text-left min-w-[600px]">
-                              <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
-                                <tr>
-                                  <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('date')}>
-                                    <div className="flex items-center gap-1">
-                                      {t('table_date')}
-                                      <ArrowUpDown size={12} className="opacity-50" />
-                                    </div>
-                                  </th>
-                                  <th className="px-4 py-3 whitespace-nowrap">{t('table_name')}</th>
-                                  <th className="px-4 py-3 whitespace-nowrap">{t('table_action')}</th>
-                                  <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap" onClick={() => handlePropertySort('amount')}>
-                                    <div className="flex items-center justify-end gap-1">
-                                      {t('table_amount')}
-                                      <ArrowUpDown size={12} className="opacity-50" />
-                                    </div>
-                                  </th>
-                                  <th className="px-4 py-3 whitespace-nowrap">{t('table_status')}</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {paginatedPropertyRecords.map((item) => (
-                                  <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                    <td className="px-4 py-3">{item.date}</td>
-                                    <td className="px-4 py-3 font-medium">{item.name}</td>
-                                    <td className="px-4 py-3">
-                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${['Buy', 'Pay', 'Installment', 'Renovation'].includes(item.action)
-                                        ? 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400'
-                                        : 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-                                        }`}>
-                                        {item.action}
-                                      </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-right font-medium">{formatCurrency(item.amount)}</td>
-                                    <td className="px-4 py-3">
-                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active'
-                                        ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                                        }`}>
-                                        {item.status}
-                                      </span>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-
-                          {propertyTotalPages > 1 && (
-                            <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm">
-                              <button
-                                onClick={() => setPropertyPage(p => Math.max(1, p - 1))}
-                                disabled={propertyPage === 1}
-                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <ChevronLeft size={16} />
-                              </button>
-                              <span className="text-slate-500 dark:text-slate-400">
-                                Page {propertyPage} of {propertyTotalPages}
-                              </span>
-                              <button
-                                onClick={() => setPropertyPage(p => Math.min(propertyTotalPages, p + 1))}
-                                disabled={propertyPage === propertyTotalPages}
-                                className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <ChevronRight size={16} />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </motion.div>
-              </motion.div>
+              <PropertyView
+                itemVariants={itemVariants}
+                selectedProperty={selectedProperty}
+                setSelectedProperty={setSelectedProperty}
+                propertyNames={propertyNames}
+                t={t}
+                propertyMetrics={propertyMetrics}
+                selectedCurrency={selectedCurrency}
+                propertyRowsPerPage={propertyRowsPerPage}
+                setPropertyRowsPerPage={setPropertyRowsPerPage}
+                setPropertyPage={setPropertyPage}
+                handlePropertySort={handlePropertySort}
+                paginatedPropertyRecords={paginatedPropertyRecords}
+                propertyPage={propertyPage}
+                propertyTotalPages={propertyTotalPages}
+                handleEdit={handleEdit}
+                handleDelete={handleDelete}
+              />
             )}
 
             {view === 'fixed-deposit' && (
-              <motion.div variants={itemVariants} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-                    <div className="p-3 bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full shrink-0">
-                      <Landmark size={24} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_fd_principal')}</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(fdStats.principal, selectedCurrency)}</p>
-                    </div>
-                  </div>
-                  <div className="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex items-center gap-4">
-                    <div className="p-3 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full shrink-0">
-                      <PiggyBank size={24} />
-                    </div>
-                    <div>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{t('stat_fd_interest')}</p>
-                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(fdStats.interest, selectedCurrency)}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors flex flex-col">
-                  {/* Unified Header with Search & Filters */}
-                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4 bg-slate-50/50 dark:bg-slate-900/50">
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                      <input
-                        type="text"
-                        placeholder="Search Name..."
-                        value={fdSearchTerm}
-                        onChange={(e) => setFdSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-slate-400"
-                      />
-                    </div>
-
-                    <div className="flex gap-4">
-                      <select
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
-                        className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
-                      >
-                        <option value="All">All Status</option>
-                        <option value="Active">Active Only</option>
-                        <option value="Mature">Mature Only</option>
-                      </select>
-
-                      <select
-                        value={fdRowsPerPage}
-                        onChange={(e) => { setFdRowsPerPage(Number(e.target.value)); setFdPage(1); }}
-                        className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
-                      >
-                        <option value={10}>10 / page</option>
-                        <option value={20}>20 / page</option>
-                        <option value={50}>50 / page</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {fdRecords.length === 0 ? (
-                    <div className="text-center py-12 text-slate-500 dark:text-slate-400 flex flex-col items-center">
-                      <Landmark size={48} className="opacity-20 mb-4" />
-                      <p>No Fixed Deposit records found.</p>
-                      <p className="text-sm mt-2">Add a new record with Type "Fixed Deposit" to see it here.</p>
-                    </div>
-                  ) : (
-                    <div className="bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-col">
-                      <div className="overflow-x-auto w-full">
-                        <table className="w-full text-sm text-left min-w-[700px]">
-                          <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
-                            <tr>
-                              <th className="px-4 py-3 whitespace-nowrap">{t('table_date')}</th>
-                              <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('name')}>
-                                <div className="flex items-center gap-1">
-                                  {t('table_name')}
-                                  <ArrowUpDown size={12} className="opacity-50" />
-                                </div>
-                              </th>
-                              <th className="px-4 py-3 text-right whitespace-nowrap">{t('table_amount')}</th>
-                              <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('status')}>
-                                <div className="flex items-center gap-1">
-                                  {t('table_status')}
-                                  <ArrowUpDown size={12} className="opacity-50" />
-                                </div>
-                              </th>
-                              <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('maturityDate')}>
-                                <div className="flex items-center gap-1">
-                                  {t('table_maturity')}
-                                  <ArrowUpDown size={12} className="opacity-50" />
-                                </div>
-                              </th>
-                              <th className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 whitespace-nowrap transition-colors" onClick={() => handleFdSort('interestDividend')}>
-                                <div className="flex items-center gap-1">
-                                  {t('table_interest')}
-                                  <ArrowUpDown size={12} className="opacity-50" />
-                                </div>
-                              </th>
-                              <th className="px-4 py-3 whitespace-nowrap text-center">{t('table_actions')}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {paginatedFdRecords.map((item) => (
-                              <tr key={item.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{item.date}</td>
-                                <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{item.name}</td>
-                                <td className="px-4 py-3 text-right font-medium text-slate-900 dark:text-slate-100">{formatCurrency(item.amount, selectedCurrency)}</td>
-                                <td className="px-4 py-3">
-                                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active'
-                                    ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                                    }`}>
-                                    {item.status}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                                  {item.maturityDate || '-'}
-                                </td>
-                                <td className="px-4 py-3 text-slate-600 dark:text-slate-400">
-                                  {formatCurrency(item.interestDividend || 0, selectedCurrency)}
-                                </td>
-                                <td className="px-4 py-3">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <button
-                                      onClick={() => handleEdit(item)}
-                                      className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-                                      title="Edit"
-                                    >
-                                      <Edit2 size={16} />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {fdTotalPages > 1 && (
-                        <div className="p-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-sm">
-                          <button
-                            onClick={() => setFdPage(p => Math.max(1, p - 1))}
-                            disabled={fdPage === 1}
-                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <ChevronLeft size={16} />
-                          </button>
-                          <span className="text-slate-500 dark:text-slate-400">
-                            Page {fdPage} of {fdTotalPages}
-                          </span>
-                          <button
-                            onClick={() => setFdPage(p => Math.min(fdTotalPages, p + 1))}
-                            disabled={fdPage === fdTotalPages}
-                            className="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <ChevronRight size={16} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                  }
-                </div>
-              </motion.div>
+              <FixedDepositView
+                itemVariants={itemVariants}
+                t={t}
+                fdStats={fdStats}
+                selectedCurrency={selectedCurrency}
+                fdSearchTerm={fdSearchTerm}
+                setFdSearchTerm={setFdSearchTerm}
+                filterStatus={filterStatus}
+                setFilterStatus={setFilterStatus}
+                fdRowsPerPage={fdRowsPerPage}
+                setFdRowsPerPage={setFdRowsPerPage}
+                setFdPage={setFdPage}
+                fdRecords={fdRecords}
+                paginatedFdRecords={paginatedFdRecords}
+                handleFdSort={handleFdSort}
+                handleEdit={handleEdit}
+                fdPage={fdPage}
+                fdTotalPages={fdTotalPages}
+              />
             )}
 
             {view === 'list' && (
-              <motion.div variants={itemVariants} className="space-y-6">
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-colors flex flex-col">
-                  {/* Unified Header with Search & Filters */}
-                  <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4 bg-slate-50/50 dark:bg-slate-900/50">
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                      <input
-                        type="text"
-                        placeholder={t('search_placeholder')}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-slate-400"
-                      />
-                    </div>
-                    <div className="flex gap-4">
-                      <select
-                        value={filterType}
-                        onChange={(e) => setFilterType(e.target.value)}
-                        className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
-                      >
-                        <option value="All">{t('all_types')}</option>
-                        {Object.values(AssetType).map(t => (
-                          <option key={t} value={t}>{t}</option>
-                        ))}
-                      </select>
-
-                      <select
-                        value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
-                        className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
-                      >
-                        <option value="All">All Status</option>
-                        <option value="Active">Active Only</option>
-                        <option value="Mature">Mature Only</option>
-                      </select>
-
-                      <select
-                        value={itemsPerPage}
-                        onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                        className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
-                      >
-                        <option value={10}>10 / page</option>
-                        <option value={20}>20 / page</option>
-                        <option value={50}>50 / page</option>
-                      </select>
-
-                      {selectedIds.size > 0 && (
-                        <button
-                          onClick={handleBatchDelete}
-                          className="px-4 py-2 bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors flex items-center gap-2"
-                        >
-                          <Trash2 size={18} />
-                          <span className="hidden sm:inline">{t('btn_delete_selected')}</span>
-                          <span className="sm:hidden">({selectedIds.size})</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="overflow-x-auto w-full">
-                    <table className="w-full text-sm text-left min-w-[900px]">
-                      <thead className="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 uppercase text-xs">
-                        <tr>
-                          <th className="px-4 py-3 w-10">
-                            <div className="flex items-center justify-center">
-                              <input
-                                type="checkbox"
-                                checked={sortedRecords.length > 0 && selectedIds.size === sortedRecords.length}
-                                onChange={toggleSelectAll}
-                                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                              />
-                            </div>
-                          </th>
-                          <th onClick={() => handleSort('date')} className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors whitespace-nowrap">
-                            <div className="flex items-center gap-1">
-                              {t('table_date')}
-                              <ArrowUpDown size={12} className="opacity-50" />
-                            </div>
-                          </th>
-                          <th className="px-4 py-3 whitespace-nowrap">{t('table_type')}</th>
-                          <th onClick={() => handleSort('name')} className="px-4 py-3 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors whitespace-nowrap">
-                            <div className="flex items-center gap-1">
-                              {t('table_name')}
-                              <ArrowUpDown size={12} className="opacity-50" />
-                            </div>
-                          </th>
-                          <th className="px-4 py-3 whitespace-nowrap">{t('table_action')}</th>
-                          <th onClick={() => handleSort('amount')} className="px-4 py-3 text-right cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-1">
-                              {t('table_amount')}
-                              <ArrowUpDown size={12} className="opacity-50" />
-                            </div>
-                          </th>
-                          <th className="px-4 py-3 whitespace-nowrap">{t('table_status')}</th>
-                          <th className="px-4 py-3 text-center whitespace-nowrap">{t('table_actions')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginatedRecords.length > 0 ? (
-                          paginatedRecords.map((item) => (
-                            <tr
-                              key={item.id}
-                              className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${selectedIds.has(item.id) ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}
-                            >
-                              <td className="px-4 py-3 text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedIds.has(item.id)}
-                                  onChange={() => toggleSelect(item.id)}
-                                  className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                />
-                              </td>
-                              <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap">{item.date}</td>
-                              <td className="px-4 py-3">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">
-                                  {item.type}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-                                {item.name}
-                                {item.remarks && (
-                                  <div className="text-xs text-slate-500 dark:text-slate-500 font-normal truncate max-w-[200px]">{item.remarks}</div>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{item.action}</td>
-                              <td className="px-4 py-3 text-right font-medium text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                                {formatCurrency(item.amount, selectedCurrency)}
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${item.status === 'Active'
-                                  ? 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                                  }`}>
-                                  {item.status}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center justify-center gap-2">
-                                  <button
-                                    onClick={() => handleEdit(item)}
-                                    className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors"
-                                    title="Edit"
-                                  >
-                                    <Edit2 size={16} />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDelete(item.id)}
-                                    className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-                                    title="Delete"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={8} className="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
-                              <div className="flex flex-col items-center gap-2">
-                                <ListFilter size={32} className="opacity-50" />
-                                <p>{t('no_records')}</p>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="border-t border-slate-200 dark:border-slate-800 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm bg-slate-50 dark:bg-slate-900/50">
-                    <div className="text-slate-500 dark:text-slate-400">
-                      Showing {Math.min(filteredRecords.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(filteredRecords.length, currentPage * itemsPerPage)} of {filteredRecords.length} entries
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
-                        className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        let pageNum = i + 1;
-                        if (totalPages > 5) {
-                          if (currentPage > 3) pageNum = currentPage - 2 + i;
-                          if (pageNum > totalPages) pageNum = totalPages - 4 + i;
-                        }
-
-                        return (
-                          <button
-                            key={i}
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${currentPage === pageNum
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
-                              }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
-                        className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
+              <RecordListView
+                itemVariants={itemVariants}
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
+                t={t}
+                filterType={filterType}
+                setFilterType={setFilterType}
+                filterStatus={filterStatus}
+                setFilterStatus={setFilterStatus}
+                itemsPerPage={itemsPerPage}
+                setItemsPerPage={setItemsPerPage}
+                setCurrentPage={setCurrentPage}
+                selectedIds={selectedIds}
+                sortedRecords={sortedRecords}
+                toggleSelectAll={toggleSelectAll}
+                handleBatchDelete={handleBatchDelete}
+                handleSort={handleSort}
+                paginatedRecords={paginatedRecords}
+                toggleSelect={toggleSelect}
+                selectedCurrency={selectedCurrency}
+                handleEdit={handleEdit}
+                handleDelete={handleDelete}
+                filteredRecords={filteredRecords}
+                currentPage={currentPage}
+                totalPages={totalPages}
+              />
             )}
 
             {view === 'settings' && (
-              <motion.div variants={itemVariants} className="max-w-2xl mx-auto space-y-6">
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                  <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                      <Settings size={20} className="text-slate-400" />
-                      Preferences
-                    </h3>
-                  </div>
-                  <div className="p-6 space-y-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-slate-900 dark:text-slate-100">Currency</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Select your preferred currency view</p>
-                      </div>
-                      <select
-                        value={selectedCurrency}
-                        onChange={(e) => setSelectedCurrency(e.target.value)}
-                        className="bg-slate-100 dark:bg-slate-800 border-none rounded-lg p-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500"
-                      >
-                        {getCurrencyOptions().map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-slate-900 dark:text-slate-100">{t('setting_theme')}</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">{t('setting_theme_desc')}</p>
-                      </div>
-                      <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                        <button
-                          onClick={() => updateProfile({ theme: 'light' })}
-                          className={`p-2 rounded-md flex items-center gap-2 text-sm transition-all ${theme === 'light' ? 'bg-white shadow text-blue-600' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                            }`}
-                        >
-                          <Sun size={16} />
-                          {t('theme_light')}
-                        </button>
-                        <button
-                          onClick={() => updateProfile({ theme: 'dark' })}
-                          className={`p-2 rounded-md flex items-center gap-2 text-sm transition-all ${theme === 'dark' ? 'bg-slate-700 shadow text-blue-400' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                            }`}
-                        >
-                          <Moon size={16} />
-                          {t('theme_dark')}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="h-px bg-slate-100 dark:bg-slate-800"></div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-slate-900 dark:text-slate-100">{t('setting_language')}</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">{t('setting_language_desc')}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Globe size={18} className="text-slate-400" />
-                        <select
-                          value={language}
-                          onChange={(e) => updateProfile({ language: e.target.value as Language })}
-                          className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                        >
-                          <option value="en">English</option>
-                          <option value="zh">中文 (Chinese)</option>
-                          <option value="ms">Bahasa Melayu</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                  <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                      <Lock size={20} className="text-slate-400" />
-                      Security
-                    </h3>
-                  </div>
-                  <div className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-slate-900 dark:text-slate-100">Password</p>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Change your account password</p>
-                      </div>
-                      <button
-                        onClick={() => setIsPasswordModalOpen(true)}
-                        className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm font-medium"
-                      >
-                        Change Password
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                  <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                      <User size={20} className="text-slate-400" />
-                      Account
-                    </h3>
-                  </div>
-                  <div className="p-6 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">Currently logged in as</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{user.email}</p>
-                    </div>
-                    <button
-                      onClick={signOut}
-                      className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors text-sm font-medium"
-                    >
-                      <LogOut size={16} />
-                      Sign Out
-                    </button>
-                  </div>
-                </div>
-
-                <p className="text-sm text-slate-400 dark:text-slate-500 font-mono mt-4 text-center">
-                  Version: Beta 2.3
-                </p>
-              </motion.div>
+              <SettingsView
+                itemVariants={itemVariants}
+                selectedCurrency={selectedCurrency}
+                setSelectedCurrency={setSelectedCurrency}
+                t={t}
+                theme={theme}
+                updateProfile={updateProfile}
+                language={language}
+                setIsPasswordModalOpen={setIsPasswordModalOpen}
+                user={user}
+                signOut={signOut}
+              />
             )}
 
           </motion.div>
