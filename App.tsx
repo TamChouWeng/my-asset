@@ -921,7 +921,7 @@ function App() {
             </button>
             <h1 className="font-bold text-slate-900 dark:text-slate-100">My Asset</h1>
           </div>
-          <button onClick={() => setIsFormOpen(true)} className="p-2 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/20">
+          <button onClick={() => { setEditingRecord(null); setIsFormOpen(true); }} className="p-2 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-900/20">
             <Plus size={20} />
           </button>
         </header>
