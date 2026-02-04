@@ -1118,7 +1118,7 @@ function App() {
       <Chatbot records={records} t={t} />
       <TransactionForm
         isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
+        onClose={() => { setIsFormOpen(false); setEditingRecord(null); }}
         onSave={handleSave}
         initialData={editingRecord}
         defaultCurrency={selectedCurrency}
