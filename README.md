@@ -22,7 +22,7 @@
     - **Duplicate Detection:** Automatic verification against existing records to prevent double-counting.
     - **Batch Confirmation:** Review records in a summary modal before committing to the database.
     - **Date Normalization:** Automatic conversion of various date formats (DD-MM-YY, etc.) to ISO (YYYY-MM-DD).
-    - **Net Asset Calculation:** *New in Beta 2.3* - Correctly handles "Sold" actions as deductions for Stocks, ETFs, and REITs.
+    - **Net Asset Calculation:** *New in Beta 2.3* - Correctly handles "Sold" actions as deductions for Stocks, ETFs, and REITs. Also filters out zero-unit assets.
 - **Advanced Form Validation:** Smart forms that adapt fields based on asset type.
 - **Batch Operations:** Efficiently delete multiple records at once.
 
