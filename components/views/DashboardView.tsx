@@ -9,6 +9,7 @@ import { AssetRecord } from '../../types';
 interface DashboardViewProps {
     itemVariants: any;
     currencyRecords: AssetRecord[];
+    activeAssetCount: number; // New Prop
     theme: string;
     t: (key: string) => string;
     filterType: string;
@@ -21,6 +22,7 @@ interface DashboardViewProps {
 const DashboardView: React.FC<DashboardViewProps> = ({
     itemVariants,
     currencyRecords,
+    activeAssetCount,
     theme,
     t,
     filterType,
@@ -94,8 +96,8 @@ const DashboardView: React.FC<DashboardViewProps> = ({
                             <Table2 size={24} />
                         </div>
                         <div className="min-w-0 w-full">
-                            <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">{t('stat_total_records')}</p>
-                            <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{currencyRecords.length}</p>
+                            <p className="text-xs xl:text-sm text-slate-500 dark:text-slate-400 truncate">{t('stat_total_assets_count') || 'Active Assets'}</p>
+                            <p className="text-xl xl:text-3xl font-bold text-slate-900 dark:text-slate-100 truncate">{activeAssetCount}</p>
                         </div>
                     </motion.div>
                 </div>

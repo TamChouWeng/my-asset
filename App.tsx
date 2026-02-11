@@ -8,6 +8,7 @@ import { useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
 import { downloadCSV, parseCSV, normalizeDate } from './utils/csvHelper';
 import { formatCurrency, CURRENCIES } from './utils/currencyUtils';
+import { aggregateAssetData } from './utils/assetUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImportConfirmationModal from './components/ImportConfirmationModal';
 import DashboardView from './components/views/DashboardView';
@@ -514,49 +515,40 @@ function App() {
   }, [records, selectedCurrency]);
 
   // Computed Metrics
+  const aggregatedData = useMemo(() => {
+    return aggregateAssetData(records, filterType, selectedCurrency);
+  }, [records, filterType, selectedCurrency]);
+
   const totalValues = useMemo(() => {
-    // Filter by Currency FIRST
-    const activeRecords = currencyRecords
-      .filter(r => r.status === 'Active')
-      .filter(r => filterType === 'All' || r.type === filterType);
-
-    // Now just sum up (since they are all same currency)
-    const total = activeRecords.reduce((acc, curr) => {
-      const multiplier = ACTION_MULTIPLIERS[curr.action.toLowerCase()] ?? 1;
-      return acc + (curr.amount * multiplier || 0);
-    }, 0);
-
+    const total = aggregatedData.reduce((sum, asset) => sum + asset.netValue, 0);
     return { [selectedCurrency]: total };
-  }, [currencyRecords, filterType, selectedCurrency]);
+  }, [aggregatedData, selectedCurrency]);
 
   // Keep existing single value for compatibility if needed (defaults to MYR sum)
   const totalValue = totalValues[selectedCurrency] || 0;
 
   const topAssetMetric = useMemo(() => {
-    const activeRecords = currencyRecords.filter(r => r.status === 'Active');
-    const map = new Map<string, number>();
+    const aggregated = aggregateAssetData(records, filterType, selectedCurrency);
+
+    if (aggregated.length === 0) return { name: 'N/A', value: 0 };
 
     if (filterType === 'All') {
-      activeRecords.forEach(r => {
-        const multiplier = ACTION_MULTIPLIERS[r.action.toLowerCase()] ?? 1;
-        map.set(r.type, (map.get(r.type) || 0) + (r.amount * multiplier));
+      // Find Top Asset Class
+      const typeMap = new Map<string, number>();
+      aggregated.forEach(asset => {
+        typeMap.set(asset.type, (typeMap.get(asset.type) || 0) + asset.netValue);
       });
+
+      let topType = { name: 'N/A', value: 0 };
+      typeMap.forEach((val, key) => {
+        if (val > topType.value) topType = { name: key, value: val };
+      });
+      return topType;
     } else {
-      activeRecords
-        .filter(r => r.type === filterType)
-        .forEach(r => {
-          const multiplier = ACTION_MULTIPLIERS[r.action.toLowerCase()] ?? 1;
-          map.set(r.name, (map.get(r.name) || 0) + (r.amount * multiplier));
-        });
+      // Find Top Asset in this Category (aggregated is already sorted by netValue desc)
+      return { name: aggregated[0].name, value: aggregated[0].netValue };
     }
-
-    let top = { name: 'N/A', value: 0 };
-    map.forEach((val, key) => {
-      if (val > top.value) top = { name: key, value: val };
-    });
-
-    return top;
-  }, [currencyRecords, filterType]);
+  }, [records, filterType, selectedCurrency]);
 
   const propertyNames = useMemo(() => {
     const props = currencyRecords.filter(r => r.type === AssetType.Property).map(r => r.name);
@@ -1013,6 +1005,7 @@ function App() {
               <DashboardView
                 itemVariants={itemVariants}
                 currencyRecords={currencyRecords}
+                activeAssetCount={aggregatedData.length}
                 theme={theme}
                 t={t}
                 filterType={filterType}

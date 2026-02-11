@@ -2,8 +2,9 @@ import React, { useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { motion } from 'framer-motion';
 import { AssetRecord, AssetStatus, ChartDataPoint, AssetType } from '../types';
-import { COLORS, DETAIL_COLORS, ACTION_MULTIPLIERS } from '../constants';
+import { COLORS, DETAIL_COLORS } from '../constants';
 import { formatCurrency } from '../utils/currencyUtils';
+import { aggregateAssetData } from '../utils/assetUtils';
 
 interface PieChartComponentProps {
   data: AssetRecord[];
@@ -18,85 +19,18 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, f
 
   // Aggregate data based on filter
   const aggregatedData = useMemo(() => {
+    const assets = aggregateAssetData(data, filterType, selectedCurrency);
     const map = new Map<string, number>();
 
-    // Step 1: Identify Active Assets
-    // We only want to list assets that are currently marked as Active.
-    // However, we must process ALL transactions (Active + Sold) for those assets to get the true net quantity.
-    const activeAssetNames = new Set<string>();
-    data.forEach(item => {
-      if (item.status === AssetStatus.Active) {
-        activeAssetNames.add(item.name);
-      }
-    });
-
-    // Step 2: Calculate Holdings for Active Assets
-    // We track Total Buy Cost and Total Buy Quantity to calculate Average Cost Basis
-    const holdings = new Map<string, {
-      netQty: number;
-      netValue: number;
-      totalBuyQty: number;
-      totalBuyCost: number;
-      type: AssetType;
-    }>();
-
-    data.forEach(item => {
-      // Skip if the asset itself is not active
-      if (!activeAssetNames.has(item.name)) return;
-
-      const multiplier = ACTION_MULTIPLIERS[item.action.toLowerCase()] ?? 1;
-      const current = holdings.get(item.name) || {
-        netQty: 0,
-        netValue: 0,
-        totalBuyQty: 0,
-        totalBuyCost: 0,
-        type: item.type,
-      };
-
-      // Accumulate Net Quantity (All transactions)
-      if (item.quantity) {
-        current.netQty += (item.quantity * multiplier);
-      }
-
-      // Accumulate Net Amount (for non-unit assets)
-      current.netValue += (item.amount * multiplier);
-
-      // Track Cost Basis (Only "Buy"/Inflow transactions)
-      // We use multiplier > 0 to identify inflows (Buy, Contribute, etc)
-      // And strict handling for unit-based assets to avoid mixing "Renovation" etc if they hypothetically applied
-      if (multiplier > 0 && item.quantity && item.quantity > 0) {
-        current.totalBuyQty += item.quantity;
-        current.totalBuyCost += item.amount;
-      }
-
-      holdings.set(item.name, current);
-    });
-
-    // Step 3: Compute Chart Values
-    holdings.forEach((data, name) => {
-      let finalValue = data.netValue;
-
-      // For Unit-based assets, calculate Value based on Average Cost of Remaining Units
-      // Value = Remaining Units * (Total Buy Cost / Total Buy Units)
-      const isUnitBased = [AssetType.Stock, AssetType.ETF, AssetType.REIT].includes(data.type);
-
-      if (isUnitBased && data.netQty > 0) {
-        // Avoid division by zero
-        const avgCost = data.totalBuyQty > 0 ? (data.totalBuyCost / data.totalBuyQty) : 0;
-        finalValue = data.netQty * avgCost;
-      }
-
-      if (finalValue > 0) {
-        if (filterType === 'All') {
-          // Group by Asset Type
-          const currentTotal = map.get(data.type) || 0;
-          map.set(data.type, currentTotal + finalValue);
-        } else {
-          // Filter by selected Type, Group by Name
-          if (data.type === filterType) {
-            map.set(name, finalValue); // Name is unique within type usually, or handled above
-          }
-        }
+    assets.forEach(asset => {
+      if (filterType === 'All') {
+        // Group by Asset Type
+        const currentTotal = map.get(asset.type) || 0;
+        map.set(asset.type, currentTotal + asset.netValue);
+      } else {
+        // Already filtered by Type in utility or above, so just use Name
+        // (aggregateAssetData returns individual assets)
+        map.set(asset.name, asset.netValue);
       }
     });
 
@@ -123,7 +57,7 @@ const PieChartComponent: React.FC<PieChartComponentProps> = ({ data, theme, t, f
     });
 
     return result.sort((a, b) => b.value - a.value);
-  }, [data, filterType]);
+  }, [data, filterType, selectedCurrency]);
 
   const totalValue = useMemo(() => aggregatedData.reduce((acc, cur) => acc + cur.value, 0), [aggregatedData]);
 
