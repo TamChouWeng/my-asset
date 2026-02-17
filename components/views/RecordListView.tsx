@@ -81,14 +81,14 @@ const RecordListView: React.FC<RecordListViewProps> = ({
                                 onChange={(e) => setFilterType(e.target.value)}
                                 className="pl-10 pr-8 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none cursor-pointer transition-colors"
                             >
-                                <option value="All">{t('filter_all_types')}</option>
-                                <option value="Stock">{t('filter_stock')}</option>
-                                <option value="Crypto">{t('filter_crypto')}</option>
-                                <option value="Fixed Deposit">{t('filter_fd')}</option>
-                                <option value="Property">{t('filter_property')}</option>
-                                <option value="Gold">{t('filter_gold')}</option>
+                                <option value="All">{t('All')}</option>
+                                <option value="Stock">{t('Stock')}</option>
+                                <option value="Crypto">{t('Crypto')}</option>
+                                <option value="Fixed Deposit">{t('FD')}</option>
+                                <option value="Property">{t('Property')}</option>
+                                <option value="Gold">{t('Gold')}</option>
                                 <option value="EPF">EPF</option>
-                                <option value="Other">{t('filter_other')}</option>
+                                <option value="Other">{t('Other')}</option>
                             </select>
                         </div>
 
