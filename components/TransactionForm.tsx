@@ -150,7 +150,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
   };
 
   const getInputClass = (fieldName: string) => {
-    const baseClass = "w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-shadow";
+    const baseClass = "w-full h-10 px-3 py-2 bg-slate-50 dark:bg-slate-950 border rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-shadow";
     if (errors[fieldName]) {
       return `${baseClass} border-red-500 focus:border-red-500 focus:ring-red-200`;
     }
@@ -188,7 +188,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
             <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
               {/* Row 1: Date & Type - Stack on mobile, Side-by-side on tablet */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="w-full">
+                <div>
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
                     Date <MandatoryMark />
                   </label>
@@ -201,8 +201,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                     }}
                     onKeyDown={(e) => e.preventDefault()} // Prevent typing
                     onClick={(e) => e.currentTarget.showPicker()} // Open picker on click
-                    className={`${getInputClass('date')} block w-full min-w-full cursor-pointer`}
-                    style={{ width: '100%', display: 'block' }}
+                    className={`${getInputClass('date')} cursor-pointer`}
+
                   />
                 </div>
                 <div>

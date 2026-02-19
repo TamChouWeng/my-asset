@@ -86,7 +86,7 @@ const RecordListView: React.FC<RecordListViewProps> = ({
                                 <option value="Crypto">{t('Crypto')}</option>
                                 <option value="Fixed Deposit">{t('FD')}</option>
                                 <option value="Property">{t('Property')}</option>
-                                <option value="Gold">{t('Gold')}</option>
+                                <option value="REIT">REIT</option>
                                 <option value="EPF">EPF</option>
                                 <option value="Other">{t('Other')}</option>
                             </select>
