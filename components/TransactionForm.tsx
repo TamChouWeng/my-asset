@@ -150,7 +150,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
   };
 
   const getInputClass = (fieldName: string) => {
-    const baseClass = "w-full h-10 px-3 py-2 bg-slate-50 dark:bg-slate-950 border rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-shadow";
+    const baseClass = "w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 transition-shadow";
     if (errors[fieldName]) {
       return `${baseClass} border-red-500 focus:border-red-500 focus:ring-red-200`;
     }
@@ -201,7 +201,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                     }}
                     onKeyDown={(e) => e.preventDefault()} // Prevent typing
                     onClick={(e) => e.currentTarget.showPicker()} // Open picker on click
-                    className={`${getInputClass('date')} cursor-pointer`}
+                    className={`${getInputClass('date')} h-10 appearance-none cursor-pointer`}
 
                   />
                 </div>
@@ -434,7 +434,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                     }}
                     onKeyDown={(e) => e.preventDefault()} // Prevent typing
                     onClick={(e) => e.currentTarget.showPicker()} // Open picker on click
-                    className={`${getInputClass('maturityDate')} cursor-pointer`}
+                    className={`${getInputClass('maturityDate')} h-10 appearance-none cursor-pointer`}
                   />
                 </div>
               </div>
