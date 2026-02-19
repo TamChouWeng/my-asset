@@ -188,7 +188,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
             <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
               {/* Row 1: Date & Type - Stack on mobile, Side-by-side on tablet */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+                <div className="min-w-0 w-full">
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
                     Date <MandatoryMark />
                   </label>
@@ -202,7 +202,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                     onKeyDown={(e) => e.preventDefault()} // Prevent typing
                     onClick={(e) => e.currentTarget.showPicker()} // Open picker on click
                     className={`${getInputClass('date')} h-10 appearance-none cursor-pointer`}
-
                   />
                 </div>
                 <div>
@@ -421,7 +420,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                       }`}
                   />
                 </div>
-                <div>
+                <div className="min-w-0 w-full">
                   <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
                     Maturity Date {formData.type === AssetType.FixedDeposit && <MandatoryMark />}
                   </label>
