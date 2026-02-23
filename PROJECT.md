@@ -48,7 +48,7 @@ My Asset is a modern, responsive personal finance dashboard built to track and a
 -   `utils/assetUtils.ts`: Core logic for asset aggregation and valuation (Net Cost logic).
 -   `types.ts`: TypeScript definitions for `AssetRecord`, `AssetType`, etc.
 
-## Recent Updates (Beta 2.3)
+## Recent Updates (Beta 2.4)
 -   **Refactored Calc Logic**: Switched Stock/ETF valuation from "Average Cost" to "Net Invested" (Buy - Sell).
 -   **Zero-Unit Filtering**: Assets with 0 remaining units are automatically excluded from charts.
 -   **Active Only Mode**: Fixed Deposit summaries and charts now strictly exclude Non-Active (Mature/Sold) records.
