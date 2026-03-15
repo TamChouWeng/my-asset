@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { motion } from 'framer-motion';
-import { AssetRecord, AssetStatus } from '../types';
+import { AssetRecord, AssetStatus, AssetType } from '../types';
 import { ACTION_MULTIPLIERS } from '../constants';
 import { formatCurrency } from '../utils/currencyUtils';
+import { aggregateAssetData } from '../utils/assetUtils';
 
 interface PerformanceChartComponentProps {
     data: AssetRecord[];
@@ -37,12 +38,21 @@ const PerformanceChartComponent: React.FC<PerformanceChartComponentProps> = ({ d
 
     // Process data to build time series
     const chartData = useMemo(() => {
+        // Find currently active assets
+        const activeAssets = aggregateAssetData(data, currentFilter, selectedCurrency);
+        const activeAssetNames = new Set(activeAssets.map(a => a.name));
+
         // 1. Sort all records by date ascending
         const sortedRecords = [...data]
-            .filter(item => item.status === AssetStatus.Active) // Only chart active/historic transactions that contribute to current value?
-            // Actually, to show history, we should process all "Active" items. 
-            // If we want "Growth over time", ideally we replay transactions.
-            // For simplicity in this version, we will assume 'date' is the entry date and accumulation happens then.
+            .filter(item => activeAssetNames.has(item.name)) // Only include currently active assets
+            .filter(item => {
+                // For Fixed Deposits, strict filter to only Active records (as per assetUtils logic)
+                if (item.type === AssetType.FixedDeposit) {
+                    return item.status === AssetStatus.Active;
+                }
+                // For other assets, we include all records (Buy, Sell, etc.) so multipliers work correctly
+                return true;
+            })
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
         const startDate = getStartDate(timeRange);
