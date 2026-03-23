@@ -57,8 +57,8 @@ export const aggregateAssetData = (
         // Basic Filter: If we are filtering by Type, ignore others
         if (filterType !== 'All' && record.type !== filterType) return;
 
-        // Strict Filter for Fixed Deposits: Only Active
-        if (record.type === AssetType.FixedDeposit && record.status !== AssetStatus.Active) return;
+        // Strict Filter for ALL Assets: Only Active
+        if (!record.status || record.status.toLowerCase() !== AssetStatus.Active.toLowerCase()) return;
 
         // Initialize if new
         if (!holdings.has(record.name)) {
