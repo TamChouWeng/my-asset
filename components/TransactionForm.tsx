@@ -216,14 +216,25 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                       if (newType === AssetType.Property) defaultAction = 'Pay';
                       if (newType === AssetType.EPF) defaultAction = 'Self contribute';
 
+                      const isFixedQty = newType === AssetType.EPF || newType === AssetType.FixedDeposit;
+                      const newQty = isFixedQty ? 1 : formData.quantity;
+                      const newAmount = isFixedQty ? (formData.unitPrice || 0) * 1 : formData.amount;
+
                       setFormData({
                         ...formData,
                         type: newType,
                         action: defaultAction,
+                        quantity: newQty,
+                        amount: newAmount,
                         interestRate: 0, // Reset interest rate on type change
                         interestDividend: 0
                       });
-                      if (errors.type) setErrors({ ...errors, type: false });
+                      
+                      setErrors(prev => ({ 
+                        ...prev, 
+                        type: false, 
+                        ...(isFixedQty ? { quantity: false } : {}) 
+                      }));
                     }}
                     className={getInputClass('type')}
                   >
@@ -356,8 +367,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                     type="number"
                     step="0.01"
                     value={formData.quantity || ''}
+                    readOnly={formData.type === AssetType.EPF || formData.type === AssetType.FixedDeposit}
                     onChange={e => handleNumericChange('quantity', e.target.value)}
-                    className={getInputClass('quantity')}
+                    className={formData.type === AssetType.EPF || formData.type === AssetType.FixedDeposit
+                      ? "w-full px-3 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 cursor-not-allowed focus:outline-none"
+                      : getInputClass('quantity')}
                   />
                 </div>
                 <div className="sm:col-span-1">
