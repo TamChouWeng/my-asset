@@ -4,6 +4,7 @@ import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { X, Send, Bot, Loader2, Sparkles, RefreshCcw, ChevronRight, Key, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AssetRecord } from '../types';
+import { fetchLiveStockPrice } from '../utils/yahooFinanceUtils';
 
 interface ChatbotProps {
   records: AssetRecord[];
@@ -101,39 +102,101 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
         - Bold currencies (e.g., **RM 1,234.56**).
         - If asked about specific asset types (like Property or FD), focus your analysis there.
         - Encourage smart saving and diversification.
+        - If the user asks to compare holdings with the current market price, USE the fetchMarketPrice tool to get the latest price for their stocks/ETFs. For Malaysian stocks, append '.KL' (e.g., 'MAYBANK.KL').
       `;
 
       // Filter and map history correctly for Gemini (user/model alternating)
       // Only send history that is not an error message
-      const chatHistory = [...messages, userMsg]
+      const chatHistory: any[] = [...messages, userMsg]
         .filter(m => m.id !== 'welcome' && !m.isError)
         .map(m => ({
           role: m.role,
           parts: [{ text: m.text }]
         }));
 
-      const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-3-flash-preview', // Switched to flash for speed and reliability
-        contents: chatHistory,
-        config: {
-          systemInstruction: systemInstruction,
-          temperature: 0.7,
+      const fetchMarketPriceDeclaration = {
+        name: "fetchMarketPrice",
+        description: "Get the current live market price for a given stock ticker symbol via Yahoo Finance. If the user asks about Apple, use 'AAPL'. For Malaysian stocks, append '.KL' (e.g. 'MAYBANK.KL').",
+        parameters: {
+          type: "OBJECT",
+          properties: {
+            ticker: {
+              type: "STRING",
+              description: "The Yahoo Finance ticker symbol (e.g., AAPL).",
+            },
+          },
+          required: ["ticker"],
         },
-      });
+      };
 
       const botMsgId = (Date.now() + 1).toString();
       setMessages(prev => [...prev, { id: botMsgId, role: 'model', text: '' }]);
 
       let fullText = '';
-      for await (const chunk of responseStream) {
-        const chunkText = chunk.text;
-        if (chunkText) {
-          fullText += chunkText;
-          setMessages(prev =>
-            prev.map(msg => msg.id === botMsgId ? { ...msg, text: fullText } : msg)
-          );
+
+      const runChatTurn = async (currentHistory: any[]) => {
+        const responseStream = await ai.models.generateContentStream({
+          model: 'gemini-3-flash-preview',
+          contents: currentHistory,
+          config: {
+            systemInstruction: systemInstruction,
+            temperature: 0.7,
+            tools: [{ functionDeclarations: [fetchMarketPriceDeclaration as any] }]
+          },
+        });
+
+        let incomingFunctionCalls: any[] = [];
+
+        for await (const chunk of responseStream) {
+          if (chunk.functionCalls && chunk.functionCalls.length > 0) {
+            incomingFunctionCalls.push(...chunk.functionCalls);
+          }
+          const chunkText = chunk.text;
+          if (chunkText) {
+            fullText += chunkText;
+            setMessages(prev =>
+              prev.map(msg => msg.id === botMsgId ? { ...msg, text: fullText } : msg)
+            );
+          }
         }
-      }
+
+        if (incomingFunctionCalls.length > 0) {
+           currentHistory.push({
+             role: 'model',
+             parts: incomingFunctionCalls.map(fc => ({ functionCall: fc }))
+           });
+
+           const functionResponses = [];
+           for (const fc of incomingFunctionCalls) {
+             if (fc.name === 'fetchMarketPrice') {
+                const ticker = (fc.args as any)?.ticker;
+                if (ticker) {
+                  fullText += `\n\n*[Fetching live price for ${ticker}...]*  \n\n`;
+                  setMessages(prev => prev.map(msg => msg.id === botMsgId ? { ...msg, text: fullText } : msg));
+                  const price = await fetchLiveStockPrice(ticker);
+                  functionResponses.push({
+                    functionResponse: {
+                      name: 'fetchMarketPrice',
+                      response: { price: price ?? 'Data not available' }
+                    }
+                  });
+                }
+             }
+           }
+           
+           if (functionResponses.length > 0) {
+             currentHistory.push({
+               role: 'user',
+               parts: functionResponses
+             });
+             // Recursive call to let the model generate the final text based on the function result
+             await runChatTurn(currentHistory);
+           }
+        }
+      };
+
+      await runChatTurn(chatHistory);
+
     } catch (error: any) {
       console.error("Gemini AI Error:", error);
 
