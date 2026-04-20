@@ -5,6 +5,8 @@ import { X, Send, Bot, Loader2, Sparkles, RefreshCcw, ChevronRight, Key, Info } 
 import { motion, AnimatePresence } from 'framer-motion';
 import { AssetRecord } from '../types';
 import { fetchLiveStockPrice } from '../utils/yahooFinanceUtils';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatbotProps {
   records: AssetRecord[];
@@ -102,7 +104,8 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
         - Bold currencies (e.g., **RM 1,234.56**).
         - If asked about specific asset types (like Property or FD), focus your analysis there.
         - Encourage smart saving and diversification.
-        - If the user asks to compare holdings with the current market price, USE the fetchMarketPrice tool to get the latest price for their stocks/ETFs. For Malaysian stocks, append '.KL' (e.g., 'MAYBANK.KL').
+        - YOU MUST ALWAYS CALL the fetchMarketPrice tool when the user asks for market prices or to compare holdings. DO NOT hallucinate or guess prices.
+        - ALWAYS format comparison data into a professional Markdown table (e.g., | Holding | Ticker | Avg Price | Market Price | PnL |).
       `;
 
       // Filter and map history correctly for Gemini (user/model alternating)
@@ -227,36 +230,17 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
 
   const formatMessage = (text: string) => {
     if (!text) return null;
-
-    const lines = text.split('\n');
-    return lines.map((line, i) => {
-      const isListItem = line.trim().startsWith('* ') || line.trim().startsWith('- ');
-      const content = isListItem ? line.trim().substring(2) : line;
-
-      // Basic bold formatting support
-      const parts = content.split(/(\*\*.*?\*\*)/g);
-      const formattedContent = parts.map((part, index) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return <strong key={index} className="font-bold text-blue-600 dark:text-blue-400">{part.slice(2, -2)}</strong>;
-        }
-        return <span key={index}>{part}</span>;
-      });
-
-      if (isListItem) {
-        return (
-          <div key={i} className="flex items-start gap-2 ml-1 mb-1">
-            <span className="text-blue-500 mt-1.5 text-[10px] shrink-0">•</span>
-            <span className="flex-1">{formattedContent}</span>
-          </div>
-        );
-      }
-
-      return (
-        <div key={i} className={`min-h-[1.25rem] ${line.trim() === '' ? 'h-2' : 'mb-1'}`}>
-          {line.trim() === '' ? null : formattedContent}
-        </div>
-      );
-    });
+    return (
+      <div className="prose prose-sm dark:prose-invert max-w-none 
+        prose-p:leading-relaxed prose-pre:bg-slate-800 prose-pre:text-slate-100 
+        prose-th:bg-blue-50 dark:prose-th:bg-slate-800 prose-th:p-2 prose-th:text-left prose-th:border prose-th:border-slate-200 dark:prose-th:border-slate-700
+        prose-td:p-2 prose-td:border prose-td:border-slate-200 dark:prose-td:border-slate-700 prose-table:w-full prose-table:border-collapse
+        prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-strong:text-blue-600 dark:prose-strong:text-blue-400">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {text}
+        </ReactMarkdown>
+      </div>
+    );
   };
 
   return (
