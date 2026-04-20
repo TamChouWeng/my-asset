@@ -1,7 +1,7 @@
 export const fetchLiveStockPrice = async (ticker: string): Promise<number | null> => {
   try {
     const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(yahooUrl)}`;
+    const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(yahooUrl)}`;
     
     const response = await fetch(proxyUrl);
     if (!response.ok) {
@@ -9,7 +9,7 @@ export const fetchLiveStockPrice = async (ticker: string): Promise<number | null
     }
     
     const data = await response.json();
-    const contents = JSON.parse(data.contents);
+    const contents = data; // corsproxy.io returns direct JSON without wrapping
     
     if (contents.chart && contents.chart.result && contents.chart.result.length > 0) {
       const result = contents.chart.result[0];

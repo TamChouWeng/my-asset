@@ -149,8 +149,12 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
         });
 
         let incomingFunctionCalls: any[] = [];
+        let incomingParts: any[] = [];
 
         for await (const chunk of responseStream) {
+          if (chunk.candidates && chunk.candidates.length > 0 && chunk.candidates[0].content && chunk.candidates[0].content.parts) {
+            incomingParts.push(...chunk.candidates[0].content.parts);
+          }
           if (chunk.functionCalls && chunk.functionCalls.length > 0) {
             incomingFunctionCalls.push(...chunk.functionCalls);
           }
@@ -166,7 +170,7 @@ const Chatbot: React.FC<ChatbotProps> = ({ records, t }) => {
         if (incomingFunctionCalls.length > 0) {
            currentHistory.push({
              role: 'model',
-             parts: incomingFunctionCalls.map(fc => ({ functionCall: fc }))
+             parts: incomingParts
            });
 
            const functionResponses = [];
