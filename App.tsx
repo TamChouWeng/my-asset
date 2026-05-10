@@ -555,6 +555,16 @@ function App() {
     return Array.from(new Set(props)).sort();
   }, [currencyRecords]);
 
+  const existingNamesByType = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    records.forEach(r => {
+      if (!map[r.type]) map[r.type] = [];
+      if (r.name && !map[r.type].includes(r.name)) map[r.type].push(r.name);
+    });
+    Object.keys(map).forEach(k => map[k].sort());
+    return map;
+  }, [records]);
+
   const propertyMetrics = useMemo(() => {
     const propertyRecords = currencyRecords.filter(r =>
       r.type === AssetType.Property &&
@@ -1115,6 +1125,7 @@ function App() {
         onSave={handleSave}
         initialData={editingRecord}
         defaultCurrency={selectedCurrency}
+        existingNamesByType={existingNamesByType}
       />
 
       {/* Password Change Modal */}

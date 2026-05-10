@@ -10,9 +10,10 @@ interface TransactionFormProps {
   onSave: (record: Omit<AssetRecord, 'id'>) => void;
   initialData?: AssetRecord | null;
   defaultCurrency: string;
+  existingNamesByType?: Record<string, string[]>;
 }
 
-const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSave, initialData, defaultCurrency }) => {
+const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSave, initialData, defaultCurrency, existingNamesByType = {} }) => {
   // Use local date instead of UTC to prevent 'yesterday' bug in Asian timezones
   const getTodayDate = () => {
     return new Date().toLocaleDateString('en-CA'); // Returns YYYY-MM-DD in local time
@@ -253,6 +254,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </label>
                 <input
                   type="text"
+                  list="historical-names"
+                  autoComplete="off"
                   placeholder="e.g. Maybank, EPF, Gold"
                   value={formData.name || ''}
                   onChange={e => {
@@ -261,6 +264,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                   }}
                   className={getInputClass('name')}
                 />
+                <datalist id="historical-names">
+                  {(existingNamesByType[formData.type as string] || []).map(name => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
               </div>
 
               {/* Row 3: Action & Status - Stack on mobile */}
