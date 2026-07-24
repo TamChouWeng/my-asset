@@ -51,6 +51,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   en: {
     // Navigation
     'nav_dashboard': 'Dashboard',
+    'nav_investment': 'Investment',
     'nav_property': 'Property',
     'nav_fixed_deposit': 'Fixed Deposit',
     'nav_records': 'Records List',
@@ -58,11 +59,13 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
     // Header/Titles
     'title_dashboard': 'Overview',
+    'title_investment': 'Investment Analysis',
     'title_property': 'Property Analysis',
     'title_fixed_deposit': 'Fixed Deposit Portfolio',
     'title_records': 'All Transactions',
     'title_settings': 'Settings',
     'subtitle_dashboard': 'Manage your wealth effectively',
+    'subtitle_investment': 'Track active holdings and unrealized performance',
     'subtitle_settings': 'Customize your application experience',
 
     // Buttons
@@ -129,17 +132,20 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   zh: {
     'nav_dashboard': '仪表板',
+    'nav_investment': '投资',
     'nav_property': '房产',
     'nav_fixed_deposit': '定期存款',
     'nav_records': '记录列表',
     'nav_settings': '设置',
 
     'title_dashboard': '概览',
+    'title_investment': '投资分析',
     'title_property': '房产分析',
     'title_fixed_deposit': '定期存款组合',
     'title_records': '所有交易',
     'title_settings': '设置',
     'subtitle_dashboard': '有效管理您的财富',
+    'subtitle_investment': '追踪活跃持仓与未实现盈亏',
     'subtitle_settings': '自定义您的应用体验',
 
     'btn_export': '导出 CSV',
@@ -199,17 +205,20 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
   },
   ms: {
     'nav_dashboard': 'Papan Pemuka',
+    'nav_investment': 'Pelaburan',
     'nav_property': 'Hartanah',
     'nav_fixed_deposit': 'Simpanan Tetap',
     'nav_records': 'Senarai Rekod',
     'nav_settings': 'Tetapan',
 
     'title_dashboard': 'Gambaran Keseluruhan',
+    'title_investment': 'Analisis Pelaburan',
     'title_property': 'Analisis Hartanah',
     'title_fixed_deposit': 'Portfolio Simpanan Tetap',
     'title_records': 'Semua Transaksi',
     'title_settings': 'Tetapan',
     'subtitle_dashboard': 'Urus kekayaan anda dengan berkesan',
+    'subtitle_investment': 'Jejaki pegangan aktif dan prestasi belum direalisasi',
     'subtitle_settings': 'Sesuaikan pengalaman aplikasi anda',
 
     'btn_export': 'Eksport CSV',

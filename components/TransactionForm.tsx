@@ -271,6 +271,45 @@ const TransactionForm: React.FC<TransactionFormProps> = ({ isOpen, onClose, onSa
                 </datalist>
               </div>
 
+              {/* Row 2b: Ticker & Exchange - Only for Stock/ETF, needed for live price lookups */}
+              {(formData.type === AssetType.Stock || formData.type === AssetType.ETF) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                      Ticker
+                    </label>
+                    <input
+                      type="text"
+                      autoComplete="off"
+                      placeholder="e.g. AAPL, 1155"
+                      value={formData.ticker || ''}
+                      onChange={e => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
+                      className={getInputClass('ticker')}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">
+                      Exchange
+                    </label>
+                    <input
+                      type="text"
+                      list="exchange-options"
+                      autoComplete="off"
+                      placeholder="e.g. NASDAQ, XKLS"
+                      value={formData.exchange || ''}
+                      onChange={e => setFormData({ ...formData, exchange: e.target.value.toUpperCase() })}
+                      className={getInputClass('exchange')}
+                    />
+                    <datalist id="exchange-options">
+                      <option value="NASDAQ" />
+                      <option value="NYSE" />
+                      <option value="AMEX" />
+                      <option value="XKLS" />
+                    </datalist>
+                  </div>
+                </div>
+              )}
+
               {/* Row 3: Action & Status - Stack on mobile */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>

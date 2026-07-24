@@ -30,6 +30,8 @@ export interface AssetRecord {
   status: AssetStatus;
   currency: string; // 'MYR' | 'USD'
   remarks?: string;
+  ticker?: string; // Stock/ETF symbol for live price lookups (e.g. AAPL, 1155)
+  exchange?: string; // e.g. NASDAQ, NYSE, XKLS
 }
 
 export interface ChartDataPoint {

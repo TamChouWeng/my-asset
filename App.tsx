@@ -12,6 +12,7 @@ import { aggregateAssetData } from './utils/assetUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImportConfirmationModal from './components/ImportConfirmationModal';
 import DashboardView from './components/views/DashboardView';
+import InvestmentView from './components/views/InvestmentView';
 import PropertyView from './components/views/PropertyView';
 import FixedDepositView from './components/views/FixedDepositView';
 import RecordListView from './components/views/RecordListView';
@@ -31,7 +32,8 @@ import {
   RefreshCw,
   Loader2,
   Landmark,
-  Upload
+  Upload,
+  LineChart
 } from 'lucide-react';
 
 // --- Helper Functions for Data Parsing ---
@@ -66,7 +68,7 @@ function App() {
   const [records, setRecords] = useState<AssetRecord[]>([]);
   const [isDataLoading, setIsDataLoading] = useState(false);
 
-  const [view, setView] = useState<'dashboard' | 'property' | 'fixed-deposit' | 'list' | 'settings'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'investment' | 'property' | 'fixed-deposit' | 'list' | 'settings'>('dashboard');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<AssetRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -197,7 +199,9 @@ function App() {
             maturityDate: item.maturity_date || item.maturityDate,
             status: item.status,
             currency: item.currency || 'MYR',
-            remarks: item.remarks
+            remarks: item.remarks,
+            ticker: item.ticker,
+            exchange: item.exchange
           };
         });
         setRecords(mappedData);
@@ -250,7 +254,11 @@ function App() {
         maturity_date: data.maturityDate ? normalizeDate(data.maturityDate) : null,
         status: data.status,
         currency: data.currency,
-        remarks: finalRemarks
+        remarks: finalRemarks,
+        // Only sent when present so saves for other types keep working even before
+        // the `ticker`/`exchange` columns exist on the `assets` table.
+        ...(data.ticker ? { ticker: data.ticker } : {}),
+        ...(data.exchange ? { exchange: data.exchange } : {})
       };
 
       if (editingRecord) {
@@ -309,7 +317,9 @@ function App() {
             maturityDate: newRecord.maturity_date,
             status: newRecord.status,
             currency: newRecord.currency || 'MYR',
-            remarks: newRecord.remarks
+            remarks: newRecord.remarks,
+            ticker: newRecord.ticker,
+            exchange: newRecord.exchange
           };
           setRecords(prev => {
             const newRecords = [mappedNew, ...prev];
@@ -853,6 +863,13 @@ function App() {
               {t('nav_dashboard')}
             </button>
             <button
+              onClick={() => setView('investment')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'investment' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
+            >
+              <LineChart size={20} />
+              {t('nav_investment')}
+            </button>
+            <button
               onClick={() => setView('property')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 whitespace-nowrap ${view === 'property' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'}`}
             >
@@ -953,18 +970,23 @@ function App() {
               <div className={`${!isDesktopOpen ? 'md:ml-12' : ''} transition-all duration-300`}>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
                   {view === 'dashboard' && t('title_dashboard')}
+                  {view === 'investment' && t('title_investment')}
                   {view === 'property' && t('title_property')}
                   {view === 'fixed-deposit' && t('title_fixed_deposit')}
                   {view === 'list' && t('title_records')}
                   {view === 'settings' && t('title_settings')}
                 </h2>
                 <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm">
-                  <span>{view === 'settings' ? t('subtitle_settings') : t('subtitle_dashboard')}</span>
+                  <span>
+                    {view === 'settings' ? t('subtitle_settings')
+                      : view === 'investment' ? t('subtitle_investment')
+                      : t('subtitle_dashboard')}
+                  </span>
                   {isDataLoading && <Loader2 size={12} className="animate-spin text-blue-500" />}
                 </div>
               </div>
 
-              {view !== 'settings' && (
+              {view !== 'settings' && view !== 'investment' && (
                 <div className="flex gap-2 w-full md:w-auto">
                   <button
                     onClick={fetchRecords}
@@ -1023,6 +1045,16 @@ function App() {
                 selectedCurrency={selectedCurrency}
                 totalValue={totalValue}
                 topAssetMetric={topAssetMetric}
+              />
+            )}
+
+            {view === 'investment' && (
+              <InvestmentView
+                itemVariants={itemVariants}
+                records={records}
+                theme={theme}
+                selectedCurrency={selectedCurrency}
+                setSelectedCurrency={setSelectedCurrency}
               />
             )}
 
