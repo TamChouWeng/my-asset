@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { RefreshCw, TrendingUp, PieChart as PieIcon } from 'lucide-react';
@@ -33,7 +33,8 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
     );
 
     const rows = useMemo(() => holdings.map(h => {
-        const currentPrice = (h.ticker ? prices[h.ticker] : undefined) ?? h.avgBuyPrice;
+        const symbol = h.ticker || h.name;
+        const currentPrice = (symbol ? prices[symbol] : undefined) ?? h.avgBuyPrice;
         const currentValue = h.quantity * currentPrice;
         const investedCapital = h.quantity * h.avgBuyPrice;
         const pl = currentValue - investedCapital;
@@ -50,7 +51,7 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
     const totalPlPct = totals.investedCapital > 0 ? (totalPl / totals.investedCapital) * 100 : 0;
 
     const handleRefresh = async () => {
-        const lookups = holdings.filter(h => h.ticker).map(h => ({ ticker: h.ticker!, exchange: h.exchange }));
+        const lookups = holdings.map(h => ({ ticker: (h.ticker || h.name).trim(), exchange: h.exchange })).filter(h => h.ticker);
         if (lookups.length === 0) return;
         setIsRefreshing(true);
         try {
@@ -61,6 +62,10 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
             setIsRefreshing(false);
         }
     };
+
+    useEffect(() => {
+        handleRefresh();
+    }, [holdings]);
 
     const allocationData = useMemo(() => {
         const map = new Map<string, { value: number; color: string }>();
