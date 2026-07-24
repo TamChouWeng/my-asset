@@ -14,8 +14,11 @@ My Asset is a robust, cloud-native personal finance dashboard built to track, vi
 ## Key Files & Architecture
 - `App.tsx`: Main entry point, handles routing (view switching), data fetching (`useSupabase`), and global state.
 - `components/views/DashboardView.tsx`: Main dashboard UI.
+- `components/views/InvestmentView.tsx`: Investment analysis UI with holdings aggregation and live price refresh.
 - `components/PieChartComponent.tsx`: Asset allocation visualization.
-- `utils/assetUtils.ts`: Core logic for asset aggregation and valuation (Net Cost logic).
+- `utils/twelveDataUtils.ts`: Primary live market price fetcher (Twelve Data) with Yahoo Finance fallback and dynamic KLSE ticker resolution.
+- `utils/yahooFinanceUtils.ts`: Single stock price fetcher via proxy.
+- `utils/assetUtils.ts`: Core logic for asset aggregation and valuation.
 - `types.ts`: TypeScript definitions for `AssetRecord`, `AssetType`, etc.
 
 ## Comprehensive Features

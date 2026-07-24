@@ -2,6 +2,15 @@
 
 All notable changes to the "My Asset" project will be documented in this file.
 
+## [Beta 2.5.0]
+### Added / Improved
+- **Live Market Price Engine:** Real-time stock & ETF price fetching powered by Twelve Data with automatic Yahoo Finance fallback.
+- **Dynamic KLSE Symbol Resolution:** Dynamic Yahoo Search API integration to automatically resolve Malaysian stock symbols (e.g. `FFB`, `BIMB`, `KOPI`, `HUPSENG`, `SUNMED`) to their 4-digit `.KL` stock codes.
+- **Auto Price Refresh:** Automatic background price updates on Investment view load and holdings state change.
+- **Unified Currency Settings:** Investment Analysis view now strictly follows the global currency selection from Settings.
+- **Tooltip Visual Parity:** Restyled Investment pie chart tooltip with percentage breakdown and theme-aware contrast matching the Dashboard page.
+- **GitHub Actions Deployment:** Updated `.github/workflows/deploy.yml` to pass `VITE_TWELVEDATA_API_KEY` for GitHub Pages build deployments.
+
 ## [Beta 2.4.1]
 ### Added / Improved
 - **Intelligent Autocomplete:** The "Name / Identifier" field in the transaction form now intelligently auto-suggests historical names filtered by the selected Asset Type.
