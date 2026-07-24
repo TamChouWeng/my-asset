@@ -92,20 +92,6 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-                        {['MYR', 'USD'].map(curr => (
-                            <button
-                                key={curr}
-                                onClick={() => setSelectedCurrency(curr)}
-                                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${selectedCurrency === curr
-                                    ? 'bg-white dark:bg-slate-700 shadow text-blue-600 dark:text-blue-400'
-                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                                    }`}
-                            >
-                                {curr}
-                            </button>
-                        ))}
-                    </div>
                     <select
                         value={assetClassFilter}
                         onChange={(e) => setAssetClassFilter(e.target.value as AssetClassFilter)}
@@ -169,13 +155,20 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
                                             ))}
                                         </Pie>
                                         <Tooltip
-                                            formatter={(value: number) => formatCurrency(value, selectedCurrency)}
+                                            formatter={(value: number) => {
+                                                const formattedValue = formatCurrency(value, selectedCurrency);
+                                                const totalVal = allocationData.reduce((acc, curr) => acc + curr.value, 0);
+                                                const percentage = totalVal > 0 ? ((value / totalVal) * 100).toFixed(1) : '0';
+                                                return `${formattedValue} (${percentage}%)`;
+                                            }}
                                             contentStyle={{
                                                 backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
                                                 borderColor: theme === 'dark' ? '#1e293b' : '#e2e8f0',
                                                 color: theme === 'dark' ? '#f1f5f9' : '#0f172a',
                                                 borderRadius: '0.5rem',
+                                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                                             }}
+                                            itemStyle={{ color: theme === 'dark' ? '#f1f5f9' : '#0f172a' }}
                                         />
                                         <Legend verticalAlign="bottom" iconType="circle" wrapperStyle={{ fontSize: '12px' }} />
                                     </PieChart>

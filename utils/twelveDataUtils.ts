@@ -43,7 +43,31 @@ const KLSE_TICKER_MAP: Record<string, string> = {
     'MYEG': '0138.KL',
 };
 
-const resolveYahooTicker = (rawTicker: string): string => {
+const searchCache = new Map<string, string>();
+
+const searchYahooSymbol = async (query: string): Promise<string | null> => {
+    if (searchCache.has(query)) return searchCache.get(query)!;
+    try {
+        const yahooSearchUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}`;
+        const proxyUrl = `https://corsproxy.io/?url=${encodeURIComponent(yahooSearchUrl)}`;
+        const res = await fetch(proxyUrl);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.quotes && Array.isArray(data.quotes)) {
+                const match = data.quotes.find((q: any) => q.exchange === 'KLS' || (q.symbol && q.symbol.endsWith('.KL')));
+                if (match?.symbol) {
+                    searchCache.set(query, match.symbol);
+                    return match.symbol;
+                }
+            }
+        }
+    } catch (e) {
+        console.warn(`Yahoo Search failed for ${query}`, e);
+    }
+    return null;
+};
+
+const resolveYahooTicker = async (rawTicker: string): Promise<string> => {
     const clean = rawTicker.trim().toUpperCase();
     if (KLSE_TICKER_MAP[clean]) {
         return KLSE_TICKER_MAP[clean];
@@ -53,6 +77,10 @@ const resolveYahooTicker = (rawTicker: string): string => {
     }
     if (/^\d{4}$/.test(clean)) {
         return `${clean}.KL`;
+    }
+    const searched = await searchYahooSymbol(clean);
+    if (searched) {
+        return searched;
     }
     return clean;
 };
@@ -105,7 +133,7 @@ export const fetchLivePrices = async (symbols: PriceLookup[]): Promise<Record<st
     const missingTickers = symbols.filter(s => result[s.ticker] === undefined);
     if (missingTickers.length > 0) {
         await Promise.all(missingTickers.map(async (s) => {
-            const targetYahooTicker = resolveYahooTicker(s.ticker);
+            const targetYahooTicker = await resolveYahooTicker(s.ticker);
             const price = await fetchLiveStockPrice(targetYahooTicker);
             if (price !== null && !isNaN(price)) {
                 result[s.ticker] = price;
