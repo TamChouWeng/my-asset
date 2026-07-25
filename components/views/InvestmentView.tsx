@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { RefreshCw, TrendingUp, PieChart as PieIcon } from 'lucide-react';
+import { RefreshCw, TrendingUp, PieChart as PieIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AssetRecord, AssetType } from '../../types';
 import { COLORS, DETAIL_COLORS } from '../../constants';
 import { formatCurrency } from '../../utils/currencyUtils';
@@ -26,6 +26,11 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
     const [prices, setPrices] = useState<Record<string, number>>({});
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+    const [sortField, setSortField] = useState<'ticker' | 'quantity' | 'pl' | null>(null);
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [currentPage, setCurrentPage] = useState(1);
 
     const holdings = useMemo(
         () => aggregateHoldings(records, selectedCurrency, assetClassFilter),
@@ -41,6 +46,57 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
         const plPct = investedCapital > 0 ? (pl / investedCapital) * 100 : 0;
         return { ...h, currentPrice, currentValue, investedCapital, pl, plPct };
     }), [holdings, prices]);
+
+    const handleSort = (field: 'ticker' | 'quantity' | 'pl') => {
+        if (sortField === field) {
+            setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+        } else {
+            setSortField(field);
+            setSortOrder('asc');
+        }
+    };
+
+    const sortedRows = useMemo(() => {
+        if (!sortField) return rows;
+        return [...rows].sort((a, b) => {
+            let valA: any = 0;
+            let valB: any = 0;
+            if (sortField === 'ticker') {
+                valA = (a.ticker || a.name).toLowerCase();
+                valB = (b.ticker || b.name).toLowerCase();
+                if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+                if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+                return 0;
+            } else if (sortField === 'quantity') {
+                valA = a.quantity;
+                valB = b.quantity;
+            } else if (sortField === 'pl') {
+                valA = a.pl;
+                valB = b.pl;
+            }
+            return sortOrder === 'asc' ? valA - valB : valB - valA;
+        });
+    }, [rows, sortField, sortOrder]);
+
+    const filteredRows = useMemo(() => {
+        if (!searchTerm.trim()) return sortedRows;
+        const term = searchTerm.toLowerCase();
+        return sortedRows.filter(r =>
+            (r.ticker && r.ticker.toLowerCase().includes(term)) ||
+            (r.name && r.name.toLowerCase().includes(term))
+        );
+    }, [sortedRows, searchTerm]);
+
+    const totalPages = Math.ceil(filteredRows.length / itemsPerPage) || 1;
+
+    const paginatedRows = useMemo(() => {
+        const start = (currentPage - 1) * itemsPerPage;
+        return filteredRows.slice(start, start + itemsPerPage);
+    }, [filteredRows, currentPage, itemsPerPage]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, itemsPerPage, assetClassFilter]);
 
     const totals = useMemo(() => rows.reduce((acc, r) => ({
         currentValue: acc.currentValue + r.currentValue,
@@ -184,36 +240,141 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
                         />
                     </div>
 
-                    {/* Holdings Table */}
-                    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-left">
-                                    <th className="p-4 font-medium">Ticker</th>
-                                    <th className="p-4 font-medium">Asset Class</th>
-                                    <th className="p-4 font-medium text-right">Qty</th>
-                                    <th className="p-4 font-medium text-right">Avg Buy Price</th>
-                                    <th className="p-4 font-medium text-right">Current Price</th>
-                                    <th className="p-4 font-medium text-right">Current Value</th>
-                                    <th className="p-4 font-medium text-right">Unrealized P/L</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.map(r => (
-                                    <tr key={r.key} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 text-slate-900 dark:text-slate-100">
-                                        <td className="p-4 font-medium">{r.ticker || r.name}</td>
-                                        <td className="p-4 text-slate-500 dark:text-slate-400">{r.type}</td>
-                                        <td className="p-4 text-right">{r.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
-                                        <td className="p-4 text-right">{formatCurrency(r.avgBuyPrice, selectedCurrency)}</td>
-                                        <td className="p-4 text-right">{formatCurrency(r.currentPrice, selectedCurrency)}</td>
-                                        <td className="p-4 text-right font-medium">{formatCurrency(r.currentValue, selectedCurrency)}</td>
-                                        <td className={`p-4 text-right font-medium ${r.pl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                            {r.pl >= 0 ? '+' : '-'}{formatCurrency(Math.abs(r.pl), selectedCurrency)} ({r.pl >= 0 ? '+' : '-'}{Math.abs(r.plPct).toFixed(2)}%)
-                                        </td>
+                    {/* Holdings Table with Header Search/Filter & Bottom Pagination */}
+                    <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4 bg-slate-50/50 dark:bg-slate-900/50">
+                            <div className="flex-1 relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name or remarks..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors placeholder-slate-400 text-sm"
+                                />
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                <select
+                                    value={itemsPerPage}
+                                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                                    className="px-4 py-2 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors"
+                                >
+                                    <option value={10}>10 / page</option>
+                                    <option value={20}>20 / page</option>
+                                    <option value={50}>50 / page</option>
+                                    <option value={100}>100 / page</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto w-full">
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-left">
+                                        <th className="p-4 font-medium cursor-pointer select-none" onClick={() => handleSort('ticker')}>
+                                            <div className="flex items-center gap-1.5">
+                                                <span>Ticker</span>
+                                                {sortField === 'ticker' ? (
+                                                    sortOrder === 'asc' ? <ArrowUp size={14} className="text-blue-500" /> : <ArrowDown size={14} className="text-blue-500" />
+                                                ) : (
+                                                    <ArrowUpDown size={14} className="opacity-40 hover:opacity-100" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th className="p-4 font-medium">Asset Class</th>
+                                        <th className="p-4 font-medium text-right cursor-pointer select-none" onClick={() => handleSort('quantity')}>
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <span>Qty</span>
+                                                {sortField === 'quantity' ? (
+                                                    sortOrder === 'asc' ? <ArrowUp size={14} className="text-blue-500" /> : <ArrowDown size={14} className="text-blue-500" />
+                                                ) : (
+                                                    <ArrowUpDown size={14} className="opacity-40 hover:opacity-100" />
+                                                )}
+                                            </div>
+                                        </th>
+                                        <th className="p-4 font-medium text-right">Avg Buy Price</th>
+                                        <th className="p-4 font-medium text-right">Current Price</th>
+                                        <th className="p-4 font-medium text-right">Current Value</th>
+                                        <th className="p-4 font-medium text-right cursor-pointer select-none" onClick={() => handleSort('pl')}>
+                                            <div className="flex items-center justify-end gap-1.5">
+                                                <span>Unrealized P/L</span>
+                                                {sortField === 'pl' ? (
+                                                    sortOrder === 'asc' ? <ArrowUp size={14} className="text-blue-500" /> : <ArrowDown size={14} className="text-blue-500" />
+                                                ) : (
+                                                    <ArrowUpDown size={14} className="opacity-40 hover:opacity-100" />
+                                                )}
+                                            </div>
+                                        </th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {paginatedRows.length > 0 ? (
+                                        paginatedRows.map(r => (
+                                            <tr key={r.key} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 text-slate-900 dark:text-slate-100">
+                                                <td className="p-4 font-medium">{r.ticker || r.name}</td>
+                                                <td className="p-4 text-slate-500 dark:text-slate-400">{r.type}</td>
+                                                <td className="p-4 text-right">{r.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                                                <td className="p-4 text-right">{formatCurrency(r.avgBuyPrice, selectedCurrency)}</td>
+                                                <td className="p-4 text-right">{formatCurrency(r.currentPrice, selectedCurrency)}</td>
+                                                <td className="p-4 text-right font-medium">{formatCurrency(r.currentValue, selectedCurrency)}</td>
+                                                <td className={`p-4 text-right font-medium ${r.pl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                    {r.pl >= 0 ? '+' : '-'}{formatCurrency(Math.abs(r.pl), selectedCurrency)} ({r.pl >= 0 ? '+' : '-'}{Math.abs(r.plPct).toFixed(2)}%)
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                                                No holdings matching "{searchTerm}"
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="border-t border-slate-200 dark:border-slate-800 p-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm bg-slate-50 dark:bg-slate-900/50">
+                            <div className="text-slate-500 dark:text-slate-400">
+                                Showing {filteredRows.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(filteredRows.length, currentPage * itemsPerPage)} of {filteredRows.length} entries
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                    let pageNum = i + 1;
+                                    if (totalPages > 5) {
+                                        if (currentPage > 3) pageNum = currentPage - 2 + i;
+                                        if (pageNum > totalPages) pageNum = totalPages - 4 + i;
+                                    }
+
+                                    return (
+                                        <button
+                                            key={i}
+                                            onClick={() => setCurrentPage(pageNum)}
+                                            className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${currentPage === pageNum
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                                }`}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    );
+                                })}
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="p-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </>
             )}

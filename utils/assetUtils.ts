@@ -57,8 +57,8 @@ export const aggregateAssetData = (
         // Basic Filter: If we are filtering by Type, ignore others
         if (filterType !== 'All' && record.type !== filterType) return;
 
-        // Strict Filter for ALL Assets: Only Active
-        if (!record.status || record.status.toLowerCase() !== AssetStatus.Active.toLowerCase()) return;
+        // Allow Active and Sold records to compute net holdings
+        if (!record.status || (record.status.toLowerCase() !== AssetStatus.Active.toLowerCase() && record.status.toLowerCase() !== AssetStatus.Sold.toLowerCase())) return;
 
         // Initialize if new
         if (!holdings.has(record.name)) {
@@ -75,13 +75,13 @@ export const aggregateAssetData = (
         }
 
         const current = holdings.get(record.name)!;
-        const multiplier = ACTION_MULTIPLIERS[record.action.toLowerCase()] ?? 1;
+        const isSold = record.status.toLowerCase() === AssetStatus.Sold.toLowerCase() || record.action.toLowerCase() === 'sold';
+        const multiplier = isSold ? -1 : (ACTION_MULTIPLIERS[record.action.toLowerCase()] ?? 1);
 
         // --- Quantity Calculation ---
         // If it has quantity, update Net Qty
         if (record.quantity) {
             // Buy = +Qty, Sell = -Qty
-            // ACTION_MULTIPLIERS: Buy=1, Sold=-1. So this works.
             current.netQty += (record.quantity * multiplier);
         }
 

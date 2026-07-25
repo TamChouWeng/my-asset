@@ -27,7 +27,7 @@ export const aggregateHoldings = (
         if ((record.currency || 'MYR') !== currency) return;
         if (record.type !== AssetType.Stock && record.type !== AssetType.ETF) return;
         if (assetClass !== 'All' && record.type !== assetClass) return;
-        if (record.status !== AssetStatus.Active) return;
+        if (record.status !== AssetStatus.Active && record.status !== AssetStatus.Sold) return;
 
         const key = record.ticker || record.name;
         if (!map.has(key)) {
@@ -49,12 +49,13 @@ export const aggregateHoldings = (
         if (!holding.ticker && record.ticker) holding.ticker = record.ticker;
         if (!holding.exchange && record.exchange) holding.exchange = record.exchange;
 
-        const multiplier = ACTION_MULTIPLIERS[record.action.toLowerCase()] ?? 1;
+        const isSold = record.status === AssetStatus.Sold || record.action.toLowerCase() === 'sold';
+        const multiplier = isSold ? -1 : (ACTION_MULTIPLIERS[record.action.toLowerCase()] ?? 1);
         const qty = record.quantity || 0;
 
         holding.quantity += qty * multiplier;
 
-        if (multiplier > 0 && qty > 0) {
+        if (!isSold && multiplier > 0 && qty > 0) {
             holding.totalBuyCost += record.amount;
             holding.totalBuyQty += qty;
         }
