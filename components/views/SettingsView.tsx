@@ -149,7 +149,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
 
             <p className="text-sm text-slate-400 dark:text-slate-500 font-mono mt-4 text-center">
-                Version: Beta 2.5.0
+                Version: Beta 2.5.1
             </p>
         </motion.div>
     );

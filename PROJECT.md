@@ -41,6 +41,11 @@ My Asset is a robust, cloud-native personal finance dashboard built to track, vi
   - **Date Normalization:** Automatic conversion of various date formats (DD-MM-YY, etc.) to ISO (YYYY-MM-DD).
 
 ### 3. Specialized Views
+- **Investment Analysis:**
+  - Net Active Holdings calculation (Active minus Sold records, excluding zero-unit holdings).
+  - Table Column Sorting (Ticker, Qty, and Unrealized P/L toggles).
+  - Search bar and pagination controls (10, 20, 50, 100 / page).
+  - Real-time stock & ETF price refresh (Twelve Data + Yahoo Finance fallback + KLSE lookup).
 - **Property Analysis:**
   - Cash Flow Analysis (Rental Income vs Expenses/Installments).
   - Inflow (Rent/Sold) vs Outflow (Pay/Maintenance/Renovation).

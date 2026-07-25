@@ -2,6 +2,12 @@
 
 All notable changes to the "My Asset" project will be documented in this file.
 
+## [Beta 2.5.1]
+### Added / Improved
+- **Active Net Holdings Calculation:** Investment tab now calculates active stock holdings by subtracting sold records (`AssetStatus.Sold` or `action: 'Sold'`). Fully sold stocks (quantity <= 0) are cleanly filtered out.
+- **Table Column Sorting:** Interactive sort toggle buttons added to Ticker, Qty, and Unrealized P/L headers in the Investment view table.
+- **Holdings Table Pagination & Search:** Added search bar, items-per-page dropdown (10, 20, 50, 100), page number navigation, and entry count indicator to the Investment view table.
+
 ## [Beta 2.5.0]
 ### Added / Improved
 - **Live Market Price Engine:** Real-time stock & ETF price fetching powered by Twelve Data with automatic Yahoo Finance fallback.
