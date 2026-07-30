@@ -2,6 +2,10 @@
 
 All notable changes to the "My Asset" project will be documented in this file.
 
+## [Beta 2.5.2]
+### Maintenance & Updates
+- **Version Bump:** Updated project documentation and window title for Beta 2.5.2 release.
+
 ## [Beta 2.5.1]
 ### Added / Improved
 - **Active Net Holdings Calculation:** Investment tab now calculates active stock holdings by subtracting sold records (`AssetStatus.Sold` or `action: 'Sold'`). Fully sold stocks (quantity <= 0) are cleanly filtered out.

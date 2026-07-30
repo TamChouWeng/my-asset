@@ -21,7 +21,7 @@ export const aggregateHoldings = (
     currency: string,
     assetClass: 'All' | AssetType.Stock | AssetType.ETF = 'All'
 ): Holding[] => {
-    const map = new Map<string, Holding & { totalBuyCost: number; totalBuyQty: number }>();
+    const groups = new Map<string, AssetRecord[]>();
 
     records.forEach(record => {
         if ((record.currency || 'MYR') !== currency) return;
@@ -30,42 +30,61 @@ export const aggregateHoldings = (
         if (record.status !== AssetStatus.Active && record.status !== AssetStatus.Sold) return;
 
         const key = record.ticker || record.name;
-        if (!map.has(key)) {
-            map.set(key, {
-                key,
-                name: record.name,
-                ticker: record.ticker,
-                exchange: record.exchange,
-                type: record.type,
-                currency: record.currency || 'MYR',
-                quantity: 0,
-                avgBuyPrice: 0,
-                totalBuyCost: 0,
-                totalBuyQty: 0,
-            });
-        }
-
-        const holding = map.get(key)!;
-        if (!holding.ticker && record.ticker) holding.ticker = record.ticker;
-        if (!holding.exchange && record.exchange) holding.exchange = record.exchange;
-
-        const isSold = record.status === AssetStatus.Sold || record.action.toLowerCase() === 'sold';
-        const multiplier = isSold ? -1 : (ACTION_MULTIPLIERS[record.action.toLowerCase()] ?? 1);
-        const qty = record.quantity || 0;
-
-        holding.quantity += qty * multiplier;
-
-        if (!isSold && multiplier > 0 && qty > 0) {
-            holding.totalBuyCost += record.amount;
-            holding.totalBuyQty += qty;
-        }
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(record);
     });
 
     const result: Holding[] = [];
-    map.forEach(holding => {
-        if (holding.quantity <= 0.000001) return;
-        holding.avgBuyPrice = holding.totalBuyQty > 0 ? holding.totalBuyCost / holding.totalBuyQty : 0;
-        result.push(holding);
+
+    groups.forEach((groupRecords, key) => {
+        const sorted = [...groupRecords].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        let currentQty = 0;
+        let avgBuyPrice = 0;
+        let name = sorted[0].name;
+        let ticker = sorted.find(r => r.ticker)?.ticker;
+        let exchange = sorted.find(r => r.exchange)?.exchange;
+        let type = sorted[0].type as AssetType.Stock | AssetType.ETF;
+
+        sorted.forEach(record => {
+            if (record.name && !name) name = record.name;
+            if (record.ticker && !ticker) ticker = record.ticker;
+            if (record.exchange && !exchange) exchange = record.exchange;
+
+            const isSold = record.status === AssetStatus.Sold || record.action.toLowerCase() === 'sold';
+            const qty = record.quantity || 0;
+
+            if (isSold) {
+                if (qty >= currentQty) {
+                    currentQty = 0;
+                    avgBuyPrice = 0;
+                } else {
+                    currentQty -= qty;
+                }
+            } else {
+                const buyCost = record.amount;
+                const buyPrice = qty > 0 ? buyCost / qty : (record.unitPrice || 0);
+                const newQty = currentQty + qty;
+                if (newQty > 0) {
+                    avgBuyPrice = ((currentQty * avgBuyPrice) + (qty * buyPrice)) / newQty;
+                    currentQty = newQty;
+                }
+            }
+        });
+
+        if (currentQty > 0.000001) {
+            // ponytail: moving average cost basis calculated chronologically; reset on full sell.
+            result.push({
+                key,
+                name,
+                ticker,
+                exchange,
+                type,
+                currency,
+                quantity: currentQty,
+                avgBuyPrice,
+            });
+        }
     });
 
     return result.sort((a, b) => (b.quantity * b.avgBuyPrice) - (a.quantity * a.avgBuyPrice));

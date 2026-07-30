@@ -1,4 +1,4 @@
-# My Asset - Project Documentation
+# My Asset (Beta 2.5.2) - Project Documentation
 
 My Asset is a robust, cloud-native personal finance dashboard built to track, visualize, and analyze various asset classes including Stocks, ETFs, Fixed Deposits, and Properties. It offers enterprise-grade data security, real-time synchronization, and AI-powered insights.
 
