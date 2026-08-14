@@ -1,6 +1,13 @@
 import { AssetRecord, AssetType, AssetStatus } from '../types';
 import { ACTION_MULTIPLIERS } from '../constants';
 
+export interface Lot {
+    id: string;
+    date: string;
+    quantity: number;
+    purchasePrice: number;
+}
+
 export interface Holding {
     key: string; // ticker if known, else name (grouping key)
     name: string;
@@ -10,6 +17,7 @@ export interface Holding {
     currency: string;
     quantity: number;
     avgBuyPrice: number;
+    lots: Lot[]; // FIFO-remaining purchase lots still held
 }
 
 /**
@@ -45,6 +53,9 @@ export const aggregateHoldings = (
         let ticker = sorted.find(r => r.ticker)?.ticker;
         let exchange = sorted.find(r => r.exchange)?.exchange;
         let type = sorted[0].type as AssetType.Stock | AssetType.ETF;
+        // FIFO queue of still-held purchase lots, built alongside the moving-average
+        // avgBuyPrice below from the same chronological Buy/Sold walk.
+        let lotQueue: Lot[] = [];
 
         sorted.forEach(record => {
             if (record.name && !name) name = record.name;
@@ -58,8 +69,20 @@ export const aggregateHoldings = (
                 if (qty >= currentQty) {
                     currentQty = 0;
                     avgBuyPrice = 0;
+                    lotQueue = [];
                 } else {
                     currentQty -= qty;
+                    let toConsume = qty;
+                    while (toConsume > 0.000001 && lotQueue.length > 0) {
+                        const front = lotQueue[0];
+                        if (front.quantity <= toConsume + 0.000001) {
+                            toConsume -= front.quantity;
+                            lotQueue.shift();
+                        } else {
+                            front.quantity -= toConsume;
+                            toConsume = 0;
+                        }
+                    }
                 }
             } else {
                 const buyCost = record.amount;
@@ -68,6 +91,9 @@ export const aggregateHoldings = (
                 if (newQty > 0) {
                     avgBuyPrice = ((currentQty * avgBuyPrice) + (qty * buyPrice)) / newQty;
                     currentQty = newQty;
+                }
+                if (qty > 0) {
+                    lotQueue.push({ id: record.id, date: record.date, quantity: qty, purchasePrice: buyPrice });
                 }
             }
         });
@@ -83,6 +109,7 @@ export const aggregateHoldings = (
                 currency,
                 quantity: currentQty,
                 avgBuyPrice,
+                lots: lotQueue,
             });
         }
     });
