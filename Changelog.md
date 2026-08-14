@@ -2,6 +2,16 @@
 
 All notable changes to the "My Asset" project will be documented in this file.
 
+## [Beta 2.5.3]
+## Added / Improved
+- **Expandable Investment Lots:** Stock and ETF holdings now have an expand/collapse control to view the individual purchase lots that are still currently held.
+- **FIFO Lot Calculation:** Buy and Sold transactions are reconstructed using First In, First Out (FIFO) so that sold quantities are correctly removed from the oldest purchase lots first, including partial sales across multiple lots.
+- **Remaining Purchase Lots:** Expanded Stock/ETF holdings now show each remaining purchase lot with its quantity, original purchase price, current market price, and individual Unrealized Profit/Loss.
+- **Lot-Based Unrealized P/L:** Unrealized Profit/Loss is now calculated from the actual remaining purchase lots rather than relying solely on the weighted average purchase price.
+- **Aggregated Unrealized P/L:** The Unrealized P/L shown on the collapsed holding row is the sum of the Unrealized P/L from all remaining purchase lots.
+- **Unrealized P/L Percentage:** The Unrealized P/L percentage is calculated against the total cost basis of the remaining purchase lots.
+- **Sold Quantity Exclusion:** Shares that have already been sold no longer contribute to the current holding quantity or Unrealized P/L calculation.
+
 ## [Beta 2.5.2]
 ### Maintenance & Updates
 - **Version Bump:** Updated project documentation and window title for Beta 2.5.2 release.
