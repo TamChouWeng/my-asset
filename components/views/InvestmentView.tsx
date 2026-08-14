@@ -351,7 +351,7 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
                                                                 <table className="w-full text-xs">
                                                                     <thead>
                                                                         <tr className="text-slate-500 dark:text-slate-400 text-left">
-                                                                            <th className="pb-2 pr-4 font-medium">Purchase</th>
+                                                                            <th className="pb-2 pr-4 font-medium">Purchase Date</th>
                                                                             <th className="pb-2 pr-4 font-medium text-right">Qty</th>
                                                                             <th className="pb-2 pr-4 font-medium text-right">Buy Price</th>
                                                                             <th className="pb-2 pr-4 font-medium text-right">Current Price</th>
@@ -359,9 +359,9 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                        {r.lots.map((lot, i) => (
+                                                                        {r.lots.map(lot => (
                                                                             <tr key={lot.id} className="text-slate-900 dark:text-slate-100">
-                                                                                <td className="py-1 pr-4">#{i + 1}</td>
+                                                                                <td className="py-1 pr-4 whitespace-nowrap">{lot.date || '-'}</td>
                                                                                 <td className="py-1 pr-4 text-right">{lot.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
                                                                                 <td className="py-1 pr-4 text-right">{formatCurrency(lot.purchasePrice, selectedCurrency)}</td>
                                                                                 <td className="py-1 pr-4 text-right">{formatCurrency(lot.currentPrice, selectedCurrency)}</td>
