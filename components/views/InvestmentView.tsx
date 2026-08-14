@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { RefreshCw, TrendingUp, PieChart as PieIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, TrendingUp, PieChart as PieIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { AssetRecord, AssetType } from '../../types';
 import { COLORS, DETAIL_COLORS } from '../../constants';
 import { formatCurrency } from '../../utils/currencyUtils';
@@ -29,6 +29,12 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
     const [sortField, setSortField] = useState<'ticker' | 'quantity' | 'pl' | null>(null);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
     const [searchTerm, setSearchTerm] = useState('');
+    const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+    const toggleExpanded = (key: string) => setExpandedKeys(prev => {
+        const next = new Set(prev);
+        next.has(key) ? next.delete(key) : next.add(key);
+        return next;
+    });
     const [itemsPerPage, setItemsPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
 
@@ -41,10 +47,13 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
         const symbol = h.ticker || h.name;
         const currentPrice = (symbol ? prices[symbol] : undefined) ?? h.avgBuyPrice;
         const currentValue = h.quantity * currentPrice;
-        const investedCapital = h.quantity * h.avgBuyPrice;
-        const pl = currentValue - investedCapital;
+        // Unrealized P/L is sourced from remaining FIFO lots, not avgBuyPrice - a lot
+        // that survived a partial sell can carry a different cost than the moving average.
+        const lots = h.lots.map(l => ({ ...l, currentPrice, unrealizedPnL: (currentPrice - l.purchasePrice) * l.quantity }));
+        const investedCapital = lots.reduce((sum, l) => sum + l.purchasePrice * l.quantity, 0);
+        const pl = lots.reduce((sum, l) => sum + l.unrealizedPnL, 0);
         const plPct = investedCapital > 0 ? (pl / investedCapital) * 100 : 0;
-        return { ...h, currentPrice, currentValue, investedCapital, pl, plPct };
+        return { ...h, lots, currentPrice, currentValue, investedCapital, pl, plPct };
     }), [holdings, prices]);
 
     const handleSort = (field: 'ticker' | 'quantity' | 'pl') => {
@@ -272,6 +281,7 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-left">
+                                        <th className="p-4 font-medium w-8"></th>
                                         <th className="p-4 font-medium cursor-pointer select-none" onClick={() => handleSort('ticker')}>
                                             <div className="flex items-center gap-1.5">
                                                 <span>Ticker</span>
@@ -310,22 +320,67 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
                                 </thead>
                                 <tbody>
                                     {paginatedRows.length > 0 ? (
-                                        paginatedRows.map(r => (
-                                            <tr key={r.key} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 text-slate-900 dark:text-slate-100">
-                                                <td className="p-4 font-medium">{r.ticker || r.name}</td>
-                                                <td className="p-4 text-slate-500 dark:text-slate-400">{r.type}</td>
-                                                <td className="p-4 text-right">{r.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
-                                                <td className="p-4 text-right">{formatCurrency(r.avgBuyPrice, selectedCurrency)}</td>
-                                                <td className="p-4 text-right">{formatCurrency(r.currentPrice, selectedCurrency)}</td>
-                                                <td className="p-4 text-right font-medium">{formatCurrency(r.currentValue, selectedCurrency)}</td>
-                                                <td className={`p-4 text-right font-medium ${r.pl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                                    {r.pl >= 0 ? '+' : '-'}{formatCurrency(Math.abs(r.pl), selectedCurrency)} ({r.pl >= 0 ? '+' : '-'}{Math.abs(r.plPct).toFixed(2)}%)
-                                                </td>
-                                            </tr>
-                                        ))
+                                        paginatedRows.map(r => {
+                                            const isExpanded = expandedKeys.has(r.key);
+                                            return (
+                                                <React.Fragment key={r.key}>
+                                                    <tr className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 text-slate-900 dark:text-slate-100">
+                                                        <td className="p-4">
+                                                            <button
+                                                                onClick={() => toggleExpanded(r.key)}
+                                                                aria-label={isExpanded ? 'Collapse purchase lots' : 'Expand purchase lots'}
+                                                                className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                                                            >
+                                                                {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                            </button>
+                                                        </td>
+                                                        <td className="p-4 font-medium">{r.ticker || r.name}</td>
+                                                        <td className="p-4 text-slate-500 dark:text-slate-400">{r.type}</td>
+                                                        <td className="p-4 text-right">{r.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                                                        <td className="p-4 text-right">{formatCurrency(r.avgBuyPrice, selectedCurrency)}</td>
+                                                        <td className="p-4 text-right">{formatCurrency(r.currentPrice, selectedCurrency)}</td>
+                                                        <td className="p-4 text-right font-medium">{formatCurrency(r.currentValue, selectedCurrency)}</td>
+                                                        <td className={`p-4 text-right font-medium ${r.pl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                            {r.pl >= 0 ? '+' : '-'}{formatCurrency(Math.abs(r.pl), selectedCurrency)} ({r.pl >= 0 ? '+' : '-'}{Math.abs(r.plPct).toFixed(2)}%)
+                                                        </td>
+                                                    </tr>
+                                                    {isExpanded && (
+                                                        <tr className="border-b border-slate-100 dark:border-slate-800/50 last:border-0 bg-slate-50/50 dark:bg-slate-950/50">
+                                                            <td></td>
+                                                            <td colSpan={7} className="p-4">
+                                                                <table className="w-full text-xs">
+                                                                    <thead>
+                                                                        <tr className="text-slate-500 dark:text-slate-400 text-left">
+                                                                            <th className="pb-2 pr-4 font-medium">Purchase</th>
+                                                                            <th className="pb-2 pr-4 font-medium text-right">Qty</th>
+                                                                            <th className="pb-2 pr-4 font-medium text-right">Buy Price</th>
+                                                                            <th className="pb-2 pr-4 font-medium text-right">Current Price</th>
+                                                                            <th className="pb-2 font-medium text-right">Unrealized P/L</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {r.lots.map((lot, i) => (
+                                                                            <tr key={lot.id} className="text-slate-900 dark:text-slate-100">
+                                                                                <td className="py-1 pr-4">#{i + 1}</td>
+                                                                                <td className="py-1 pr-4 text-right">{lot.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}</td>
+                                                                                <td className="py-1 pr-4 text-right">{formatCurrency(lot.purchasePrice, selectedCurrency)}</td>
+                                                                                <td className="py-1 pr-4 text-right">{formatCurrency(lot.currentPrice, selectedCurrency)}</td>
+                                                                                <td className={`py-1 text-right font-medium ${lot.unrealizedPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                                                                    {lot.unrealizedPnL >= 0 ? '+' : '-'}{formatCurrency(Math.abs(lot.unrealizedPnL), selectedCurrency)}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </React.Fragment>
+                                            );
+                                        })
                                     ) : (
                                         <tr>
-                                            <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                                            <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
                                                 No holdings matching "{searchTerm}"
                                             </td>
                                         </tr>
