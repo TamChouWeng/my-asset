@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { RefreshCw, TrendingUp, PieChart as PieIcon, ArrowUpDown, ArrowUp, ArrowDown, Search, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
@@ -115,22 +115,38 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
     const totalPl = totals.currentValue - totals.investedCapital;
     const totalPlPct = totals.investedCapital > 0 ? (totalPl / totals.investedCapital) * 100 : 0;
 
-    const handleRefresh = async () => {
+    // ponytail: refs (not state) for cooldown/in-flight guards - they gate a fetch that's about
+    // to happen, so they must read synchronously rather than waiting for a re-render.
+    const isFetchingRef = useRef(false);
+    const lastFetchTime = useRef(0);
+    const REFRESH_COOLDOWN_MS = 60_000;
+
+    const handleRefresh = async (force = false) => {
+        if (isFetchingRef.current) return;
+        if (!force && Date.now() - lastFetchTime.current < REFRESH_COOLDOWN_MS) return;
         const lookups = holdings.map(h => ({ ticker: (h.ticker || h.name).trim(), exchange: h.exchange })).filter(h => h.ticker);
         if (lookups.length === 0) return;
+        isFetchingRef.current = true;
+        lastFetchTime.current = Date.now();
         setIsRefreshing(true);
         try {
             const fetched = await fetchLivePrices(lookups);
             setPrices(prev => ({ ...prev, ...fetched }));
             setLastRefreshed(new Date());
         } finally {
+            isFetchingRef.current = false;
             setIsRefreshing(false);
         }
     };
 
+    // ponytail: ref mirrors the latest handleRefresh so the mount-only effect below can call it
+    // without listing it as a dependency (it closes over holdings, which changes every render).
+    const handleRefreshRef = useRef(handleRefresh);
+    handleRefreshRef.current = handleRefresh;
+
     useEffect(() => {
-        handleRefresh();
-    }, [holdings]);
+        handleRefreshRef.current();
+    }, []);
 
     const allocationData = useMemo(() => {
         const map = new Map<string, { value: number; color: string }>();
@@ -169,7 +185,7 @@ const InvestmentView: React.FC<InvestmentViewProps> = ({ itemVariants, records, 
                 </div>
 
                 <button
-                    onClick={handleRefresh}
+                    onClick={() => handleRefresh(true)}
                     disabled={isRefreshing}
                     title={lastRefreshed ? `Last refreshed ${lastRefreshed.toLocaleTimeString()}` : 'Fetch latest market prices'}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm shadow-blue-900/30 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"

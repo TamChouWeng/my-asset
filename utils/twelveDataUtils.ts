@@ -89,6 +89,50 @@ const resolveYahooTicker = async (rawTicker: string): Promise<string> => {
 // usage) rather than caching it, since Vite already inlines import.meta.env at build time.
 const getApiKey = () => (import.meta as any).env?.VITE_TWELVEDATA_API_KEY;
 
+// ponytail: matches the Twelve Data "Basic 8" plan's 8-credit/minute cap (1 symbol = 1 credit).
+// Bump CHUNK_SIZE toward your plan's per-minute credit limit if you upgrade.
+const TWELVE_DATA_CHUNK_SIZE = 8;
+const TWELVE_DATA_CHUNK_DELAY_MS = 60_000;
+
+const chunk = <T,>(arr: T[], size: number): T[][] => {
+    const chunks: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+    return chunks;
+};
+
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Fetches one batched /price request (up to TWELVE_DATA_CHUNK_SIZE symbols) and writes
+// resolved prices into `result`. Never throws; failures just leave those tickers unresolved.
+const fetchTwelveDataChunk = async (symbols: PriceLookup[], apiKey: string, result: Record<string, number>) => {
+    const symbolParams = symbols.map(s => (s.exchange ? `${s.ticker}:${s.exchange}` : s.ticker));
+    const url = `https://api.twelvedata.com/price?symbol=${encodeURIComponent(symbolParams.join(','))}&apikey=${apiKey}`;
+
+    try {
+        const response = await fetch(url);
+        if (response.ok) {
+            const data = await response.json();
+            // Check if Twelve Data returned a global error object (e.g. code 429 rate limit)
+            if (!data.code || data.code === 200) {
+                symbols.forEach((s, i) => {
+                    const entry = symbols.length === 1 ? data : data[symbolParams[i]];
+                    const price = entry && !entry.code ? parseFloat(entry.price) : NaN;
+                    if (!isNaN(price)) result[s.ticker] = price;
+                });
+            } else {
+                console.warn(`Twelve Data API returned code ${data.code}: ${data.message}`);
+            }
+        } else if (response.status === 429) {
+            // ponytail: no retry here - moving on to the next chunk (or ending) is what prevents hammering the rate limit
+            console.warn('Twelve Data rate limit reached (429). Keeping existing prices; will retry on next refresh.');
+        } else {
+            console.warn(`Twelve Data network response was not ok: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Error fetching live prices from Twelve Data:', error);
+    }
+};
+
 /**
  * Fetches current market prices from Twelve Data for the given tickers.
  * Returns a map keyed by ticker (not by "ticker:exchange"). Missing/failed
@@ -102,28 +146,11 @@ export const fetchLivePrices = async (symbols: PriceLookup[]): Promise<Record<st
     if (symbols.length === 0) return result;
 
     if (apiKey) {
-        const symbolParams = symbols.map(s => (s.exchange ? `${s.ticker}:${s.exchange}` : s.ticker));
-        const url = `https://api.twelvedata.com/price?symbol=${encodeURIComponent(symbolParams.join(','))}&apikey=${apiKey}`;
-
-        try {
-            const response = await fetch(url);
-            if (response.ok) {
-                const data = await response.json();
-                // Check if Twelve Data returned a global error object (e.g. code 429 rate limit)
-                if (!data.code || data.code === 200) {
-                    symbols.forEach((s, i) => {
-                        const entry = symbols.length === 1 ? data : data[symbolParams[i]];
-                        const price = entry && !entry.code ? parseFloat(entry.price) : NaN;
-                        if (!isNaN(price)) result[s.ticker] = price;
-                    });
-                } else {
-                    console.warn(`Twelve Data API returned code ${data.code}: ${data.message}`);
-                }
-            } else {
-                console.warn(`Twelve Data network response was not ok: ${response.status}`);
-            }
-        } catch (error) {
-            console.error('Error fetching live prices from Twelve Data:', error);
+        // Split into plan-sized chunks so one refresh doesn't itself exceed the per-minute credit cap.
+        const chunks = chunk(symbols, TWELVE_DATA_CHUNK_SIZE);
+        for (let i = 0; i < chunks.length; i++) {
+            await fetchTwelveDataChunk(chunks[i], apiKey, result);
+            if (i < chunks.length - 1) await sleep(TWELVE_DATA_CHUNK_DELAY_MS);
         }
     } else {
         console.warn('VITE_TWELVEDATA_API_KEY is not set; Twelve Data skipped.');
