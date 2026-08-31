@@ -2,6 +2,14 @@
 
 All notable changes to the "My Asset" project will be documented in this file.
 
+## [Beta 2.5.4]
+## Fixed / Improved
+- **Twelve Data Rate-Limit Resilience:** Requests are now split into plan-sized chunks (default 8 symbols) with a spacing delay between chunks, so a single refresh no longer exceeds the per-minute API credit cap on its own.
+- **Graceful 429 Handling:** A Twelve Data rate-limit response (429) is now logged distinctly and no longer treated as a generic failure. No retry is attempted; previously fetched prices remain visible until the next refresh.
+- **Mount-Only Auto Refresh:** The Investment view now fetches prices once when the page loads instead of re-fetching every time the holdings calculation changes (search, sort, pagination, filters no longer trigger a Twelve Data request).
+- **60-Second Refresh Cooldown:** Automatic refreshes are throttled to once per 60 seconds; the existing "Refresh Prices" button still allows an immediate manual refresh that bypasses the cooldown.
+- **Duplicate-Refresh Guard:** A refresh already in progress blocks additional automatic refresh attempts, preventing overlapping Twelve Data requests.
+
 ## [Beta 2.5.3]
 ## Added / Improved
 - **Expandable Investment Lots:** Stock and ETF holdings now have an expand/collapse control to view the individual purchase lots that are still currently held.
