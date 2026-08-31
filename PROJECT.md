@@ -1,4 +1,4 @@
-# My Asset (Beta 2.5.2) - Project Documentation
+# My Asset (Beta 2.5.4) - Project Documentation
 
 My Asset is a robust, cloud-native personal finance dashboard built to track, visualize, and analyze various asset classes including Stocks, ETFs, Fixed Deposits, and Properties. It offers enterprise-grade data security, real-time synchronization, and AI-powered insights.
 
@@ -16,7 +16,7 @@ My Asset is a robust, cloud-native personal finance dashboard built to track, vi
 - `components/views/DashboardView.tsx`: Main dashboard UI.
 - `components/views/InvestmentView.tsx`: Investment analysis UI with holdings aggregation and live price refresh.
 - `components/PieChartComponent.tsx`: Asset allocation visualization.
-- `utils/twelveDataUtils.ts`: Primary live market price fetcher (Twelve Data) with Yahoo Finance fallback and dynamic KLSE ticker resolution.
+- `utils/twelveDataUtils.ts`: Primary live market price fetcher (Twelve Data), chunked to respect per-minute API credit limits with graceful 429 handling, plus Yahoo Finance fallback and dynamic KLSE ticker resolution.
 - `utils/yahooFinanceUtils.ts`: Single stock price fetcher via proxy.
 - `utils/assetUtils.ts`: Core logic for asset aggregation and valuation.
 - `types.ts`: TypeScript definitions for `AssetRecord`, `AssetType`, etc.
@@ -45,7 +45,7 @@ My Asset is a robust, cloud-native personal finance dashboard built to track, vi
   - Net Active Holdings calculation (Active minus Sold records, excluding zero-unit holdings).
   - Table Column Sorting (Ticker, Qty, and Unrealized P/L toggles).
   - Search bar and pagination controls (10, 20, 50, 100 / page).
-  - Real-time stock & ETF price refresh (Twelve Data + Yahoo Finance fallback + KLSE lookup).
+  - Real-time stock & ETF price refresh (Twelve Data + Yahoo Finance fallback + KLSE lookup), with a one-time refresh on view load, manual refresh button, 60-second auto-refresh cooldown, and duplicate-request/rate-limit protection.
 - **Property Analysis:**
   - Cash Flow Analysis (Rental Income vs Expenses/Installments).
   - Inflow (Rent/Sold) vs Outflow (Pay/Maintenance/Renovation).
