@@ -25,3 +25,6 @@ dist-ssr
 
 # Env
 .env*
+
+# Publish to Agensi
+*Publish To Agensi
